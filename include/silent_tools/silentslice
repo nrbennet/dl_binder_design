@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+import stat
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentslice by bcov - a tool to allow you extract a smaller silent file from a larger one')
+    eprint("Usage:")
+    eprint("        cat list_of_tags.list | silentslice myfile.silent > new.silent")
+    eprint("                             or")
+    eprint("        silentslice myfile.silent tag1 tag2 tag3 > new.silent")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+
+tag_buffers = []
+if ( stat.S_ISFIFO(os.stat("/dev/stdin").st_mode) ):
+    tag_buffers += sys.stdin.readlines()
+tag_buffers += sys.argv[2:]
+
+tags = []
+for line in tag_buffers:
+    line = line.strip()
+    if (len(line) == 0):
+        continue
+    sp = line.split(" ")
+    for tag in sp:
+        tags.append(tag)
+
+if (len(tags) != len(set(tags))):
+    eprint("silentslice: Warning: duplicate tags specified")
+
+silent_index = silent_tools.get_silent_index( silent_file )
+
+sys.stdout.write( silent_tools.silent_header( silent_index ) )
+sys.stdout.flush()
+
+with open(silent_file, errors='ignore') as sf:
+    for tag in tags:
+
+        if ( tag not in silent_index['index'] ):
+            eprint("silentslice: Unable to find tag: %s"%tag)
+            continue
+        structure = silent_tools.get_silent_structure_file_open( sf, silent_index, tag )
+
+        sys.stdout.write("".join(structure))
+        sys.stdout.flush()
+
+

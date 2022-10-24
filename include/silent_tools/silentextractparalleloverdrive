@@ -1,0 +1,40 @@
+#!/bin/bash
+
+tags=""
+
+tmp_list=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)
+tmp_list="tmp_${tmp_list}.list"
+rm $tmp_list > /dev/null 2>&1
+
+if [ $# -eq 0 ]; then
+    echo >&2 ""
+    echo >&2 "silentextractparallel by bcov - a tool extract a silent file in paralllel"
+    echo >&2 "Usage:"
+    echo >&2 "        silentextractparallel myfile.silent"
+    exit 1
+fi
+
+if [ ! -f $1 ]; then
+    echo >&2 "silentextractparallel: $1 doesn't exist!"
+    exit 1
+fi
+
+tmp_fol=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)
+tmp_fol="tmp_${tmp_fol}"
+
+cpus=64 #$(parallel --number-of-cores)
+
+silentls $1 > $tmp_list
+
+splitno=$((( $(wc -l $tmp_list | awk '{print $1}') / $cpus + 1)))
+
+mkdir $tmp_fol
+
+split -l $splitno $tmp_list $tmp_fol/x
+
+ls $tmp_fol/x* | parallel "cat {} | silentslice $1 > {}.silent"
+
+ls $tmp_fol/x*.silent | parallel -j $cpus 'silentextract {}'
+
+rm $tmp_list
+rm -r $tmp_fol

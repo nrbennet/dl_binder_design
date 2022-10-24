@@ -1,0 +1,64 @@
+#!/bin/bash
+
+tags=""
+
+#https://stackoverflow.com/questions/369758/how-to-trim-whitespace-from-a-bash-variable
+trim() {
+    local var="$*"
+    # remove leading whitespace characters
+    var="${var#"${var%%[![:space:]]*}"}"
+    # remove trailing whitespace characters
+    var="${var%"${var##*[![:space:]]}"}"   
+    echo -n "$var"
+}
+
+
+#https://stackoverflow.com/questions/19408649/pipe-input-into-a-script
+if [ -p /dev/stdin ]; then
+    while IFS= read tag; do
+        tags="$tags $(trim $tag)"
+    done
+
+fi
+
+
+
+if [ $# -eq 0 ]; then
+    echo >&2 ""
+    echo >&2 "silentextractspecific by bcov - a tool to easily extract specific tags from silent files"
+    echo >&2 "Usage:"
+    echo >&2 "        cat list_of_tags.list | silentextractspecific myfile.silent"
+    echo >&2 "                             or"
+    echo >&2 "        silentextractspecific myfile.silent tag1 tag2 tag3"
+    echo >&2 "Flags:"
+    echo >&2 "        -j cpus"
+    echo >&2 "        -p param_file"
+    echo >&2 "        @flags_file"
+    exit 1
+fi
+
+
+source $(dirname $(type -p "$0"))/_helpers/extract_flags.sh
+
+silent=$1
+shift
+for tag in "$@"; do
+    tags="$tags $(trim $tag)"
+done
+
+
+if [ -z "$tags" ]; then
+    exit 0;
+fi
+
+
+tmp_file=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)
+tmp_file="tmp_${tmp_file}.silent"
+
+echo "$tags" | silentslice $silent > $tmp_file
+
+silentextract $tmp_file
+
+rm $tmp_file
+
+

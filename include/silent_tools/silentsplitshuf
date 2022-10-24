@@ -1,0 +1,124 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+import math
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) != 3):
+    eprint("")
+    eprint("silentsplitshuf by bcov - a tool to split a silentfile into equal size parts while shuffling")
+    eprint("Usage:")
+    eprint("        silentsplit myfile.silent TAGS_PER_SILENT_FILE")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+
+if ( not os.path.exists(silent_file) ):
+    eprint("silentsplitshuf: File not found " + silent_file)
+    assert(False)
+
+tags_per = sys.argv[2]
+try:
+    tags_per = int(tags_per)
+    assert(tags_per > 0)
+except:
+    eprint("silentsplitshuf: Second argument must be a number greater than 0")
+    assert(False)
+
+
+alpha = "abcdefghijklmnopqrstuvwxyz"
+def get_split_str(width, number):
+    out_str = ""
+    for i in range(width):
+        out_str = alpha[number % 26] + out_str
+        number //= 26
+    return "x" + "z"*(width-2) + out_str
+
+def get_split_str2(number):
+    for width in range(2, 10000):
+        this_num = 26**(width-1) * 25 
+        if ( number < this_num ):
+            return get_split_str(width, number)
+        number -= this_num
+
+def split_name_gen(number):
+    names = []
+    for i in range(number):
+        names.append(get_split_str2(i))
+    return names
+
+
+silent_index = silent_tools.get_silent_index( silent_file )
+
+open_silent_file = open( silent_file, errors='ignore' )
+
+
+# this is really complicated so a long comment is in order
+#  we open a whole bunch of files at once and write 1 pdb to each file round-robin
+#  this works until you open too many files and the file system starts complaining
+#  the solution is to open files in batches and then do the round-robin thing
+
+
+total_structures = len(silent_index['tags'])
+num_files = int(math.ceil(total_structures / tags_per))
+
+
+max_open_files = 512 - 30 # for systems with 512 limit and a buffer of 30
+
+num_batches = math.ceil( num_files / max_open_files )
+num_open_files = math.ceil( num_files / num_batches )
+
+all_names = split_name_gen(num_files)
+
+cur_struct = 0
+
+for file_batch in range(num_batches):
+
+    lb = file_batch * num_open_files
+    ub = min( (file_batch + 1) * num_open_files, len(all_names) )
+
+    files = []
+    for name in all_names[lb:ub]:
+        f = open(name + ".silent", "w" )
+        f.write( silent_tools.silent_header(silent_index) )
+        files.append( f )
+
+    cur_struct_max = min( tags_per * ub, total_structures )
+
+    seek_size = 1000
+    ifile = 0
+
+    while cur_struct < cur_struct_max:
+
+        if ( cur_struct + seek_size > cur_struct_max ):
+            seek_size = cur_struct_max - cur_struct
+
+        structures = silent_tools.get_silent_structures_true_slice( open_silent_file, 
+                            silent_index, cur_struct, cur_struct+seek_size, True )
+
+        for structure in structures:
+            files[ifile].write(structure)
+            ifile += 1
+            ifile %= len(files)
+
+        cur_struct += seek_size
+
+
+
+    for file in files:
+        file.close()
+
+
+open_silent_file.close()
+
+
+
+

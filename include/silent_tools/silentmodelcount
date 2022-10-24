@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL)
+
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentmodelcount by nate - a shortcut to do silentls <silentfile> | wc -l')
+    eprint("Usage:")
+    eprint("        silentmodelcount myfile.silent")
+    sys.exit(1)
+
+
+files = sys.argv[1:]
+
+total_models = 0
+
+for ifile in range(len(files)):
+
+    file = files[ifile]
+
+    if (len(files) > 1):
+        print(file + ":")
+
+    silent_index = silent_tools.get_silent_index( file )
+    total_models += len(silent_index["tags"])
+
+print( total_models )

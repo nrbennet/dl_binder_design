@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+import re
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) == 2):
+    eprint("")
+    eprint('silentgreppdbinfolabels by bcov - a tool to allow you to look for specific pdbinfo labels')
+    eprint("Usage:")
+    eprint("        silentslice myfile.silent <grep pattern>")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+grep = sys.argv[2]
+
+
+silent_index = silent_tools.get_silent_index( silent_file )
+
+
+with open(silent_file, errors='ignore') as sf:
+    for tag in silent_index['tags']:
+
+        structure = silent_tools.get_silent_structure_file_open( sf, silent_index, tag )
+
+        to_print = []
+        for line in structure:
+            if ( not line.startswith("REMARK PDBinfo-LABEL:" ) ):
+                continue
+            sp = line.strip().split()
+            prefix = sp[2] + ":"
+            for elem in sp[3:]:
+                if ( not re.search(grep, elem) is None ):
+                    to_print.append(prefix + elem)
+        to_print.append(tag)
+
+        print(" ".join(to_print))
+
+
+

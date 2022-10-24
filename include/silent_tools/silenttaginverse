@@ -1,0 +1,11 @@
+#!/bin/bash
+if [ $# -eq 0 ]; then
+    echo >&2 ""
+    echo >&2 "silentsliceinverse by Nate - a tool to slice out all tags except for a list of tags from a silentfile"
+    echo >&2 "Usage:"
+    echo >&2 "        silentsliceinverse myfile.silent bad_tags.list > new.silent"
+
+    exit 1
+fi
+
+comm -23 <(silentls $1 | sort | uniq) <(cat $2 | sort | uniq) > $tmp_tags

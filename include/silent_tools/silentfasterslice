@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+import stat
+import numpy as np
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentslicefast by bcov - a tool to allow you extract a smaller silent file from a larger one')
+    eprint('                             without preserving the order')
+    eprint("Usage:")
+    eprint("        cat list_of_tags.list | silentslicefast myfile.silent > new.silent")
+    eprint("                             or")
+    eprint("        silentslicefast myfile.silent tag1 tag2 tag3 > new.silent")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+
+tag_buffers = []
+if ( stat.S_ISFIFO(os.stat("/dev/stdin").st_mode) ):
+    tag_buffers += sys.stdin.readlines()
+tag_buffers += sys.argv[2:]
+
+tags = []
+for line in tag_buffers:
+    line = line.strip()
+    if (len(line) == 0):
+        continue
+    sp = line.split(" ")
+    for tag in sp:
+        tags.append(tag)
+
+if (len(tags) != len(set(tags))):
+    eprint("silentfastslice: Warning: duplicate tags specified")
+
+silent_index = silent_tools.get_silent_index( silent_file )
+
+sys.stdout.write( silent_tools.silent_header( silent_index ) )
+sys.stdout.flush()
+
+existing_tags = []
+for tag in tags:
+    if ( tag not in silent_index['index'] ):
+        eprint("silentslice: Unable to find tag: %s"%tag)
+        continue
+    else:
+        existing_tags.append(tag)
+
+seeks = []
+ogs = []
+for x in existing_tags:
+    entry = silent_index['index'][x]
+    seeks.append(entry['seek'])
+    if ( 'orig' in entry ):
+        ogs.append(entry['orig'])
+    else:
+        ogs.append(x)
+
+arg_sorted = np.argsort(seeks)
+ogs = np.array(ogs)[arg_sorted]
+tags = np.array(tags)[arg_sorted]
+
+# They say it's faster to read 1MB than to seek
+min_dist = 2**20
+
+with open(silent_file, errors='ignore') as sf:
+
+    next_tag = 0
+    itag = 0
+    while itag < len(tags):
+
+        start_seek = silent_index['index'][tags[itag]]['seek']
+        last_seek = start_seek
+
+        itag += 1
+        while itag < len(tags):
+            next_seek = silent_index['index'][tags[itag]]['seek']
+            if ( next_seek - last_seek > min_dist ):
+                break
+            last_seek = next_seek
+            itag += 1
+
+        structure, first_line = silent_tools.get_silent_structure_file_open( sf, silent_index, ogs[next_tag], return_first_line=True )
+
+        sys.stdout.write("".join(structure))
+        sys.stdout.flush()
+        next_tag += 1
+        while next_tag < itag:
+
+
+            structure, first_line = silent_tools.rip_structures_till( sf, first_line, ogs[next_tag] )
+
+            sys.stdout.write("".join(structure))
+            sys.stdout.flush()
+            next_tag += 1
+
+
+

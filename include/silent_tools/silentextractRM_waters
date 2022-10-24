@@ -1,0 +1,27 @@
+#!/bin/bash
+
+
+if [ $# -eq 0 ]; then
+    echo >&2 ""
+    echo >&2 "silentextract by bcov - a tool to easily extract all tags from silent files"
+    echo >&2 "Usage:"
+    echo >&2 "        silentextractspecific myfile.silent"
+
+    exit 1
+fi
+
+
+
+silent=$1
+
+extract_program=extract_pdbs
+
+#https://stackoverflow.com/questions/592620/how-to-check-if-a-program-exists-from-a-bash-script/677212#677212
+command -v extract_pdbs >/dev/null 2>&1 || { 
+    #echo >&2 "You must have extract_pdbs on your path!"; 
+    #echo >&2 "Try doing cd silent_tools; ln -s /software/rosetta/latest/bin/extract_pdbs ."
+    #exit 1; 
+    extract_program=pyextract_pdbs
+}
+
+$extract_program -in:file:silent $silent -in:file:silent_struct_type binary -extra_res_fa /home/bcov/from/jason/H3i.am1bcc.fa.mm.params

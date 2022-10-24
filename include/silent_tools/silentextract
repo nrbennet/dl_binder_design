@@ -1,0 +1,59 @@
+#!/bin/bash
+
+
+if [ $# -eq 0 ]; then
+    echo >&2 ""
+    echo >&2 "silentextract by bcov - a tool to easily extract all tags from silent files"
+    echo >&2 "Usage:"
+    echo >&2 "        silentextract myfile.silent"
+    echo >&2 "Flags:"
+    echo >&2 "        -j cpus"
+    echo >&2 "        -p param_file"
+    echo >&2 "        @flags_file"
+
+    exit 1
+fi
+
+source $(dirname $(type -p "$0"))/_helpers/extract_flags.sh
+
+silent=$1
+
+extract_program=extract_pdbs
+
+#https://stackoverflow.com/questions/592620/how-to-check-if-a-program-exists-from-a-bash-script/677212#677212
+command -v extract_pdbs >/dev/null 2>&1 || { 
+    #echo >&2 "You must have extract_pdbs on your path!"; 
+    #echo >&2 "Try doing cd silent_tools; ln -s /software/rosetta/latest/bin/extract_pdbs ."
+    #exit 1; 
+    extract_program=pyextract_pdbs
+}
+
+#$extract_program -in:file:silent $silent -in:file:silent_struct_type binary -ignore_waters false -extra_res_fa /home/bcov/from/jason/H3i.am1bcc.fa.mm.params -extra_res_database_resname_list  /home/nrbennet/software/silent_tools/extra_residues.list
+
+if [ -z "${SILENT_J}" ]; then
+# Do single-thread extraction
+    $extract_program -in:file:silent $silent -in:file:silent_struct_type binary $SILENT_PARAMS $SILENT_AT
+else
+# Do multi-thread extraction
+
+    tmp_fol=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)
+    tmp_fol="tmp_${tmp_fol}"
+    rm -r $tmp_fol > /dev/null 2>&1
+    mkdir $tmp_fol
+    tmp_list="$tmp_fol/list"
+
+    cpus=${SILENT_J}
+
+    silentls $silent > $tmp_list
+
+    splitno=$((( $(wc -l $tmp_list | awk '{print $1}') / $cpus + 1)))
+
+    split -l $splitno $tmp_list $tmp_fol/x
+
+    ls $tmp_fol/x* | parallel -j$cpus "cat {} | silentslice $silent > {}.silent"
+
+    ls $tmp_fol/x*.silent | parallel -j$cpus 'silentextract {}'
+
+    rm $tmp_list
+    rm -r $tmp_fol
+fi

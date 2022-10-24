@@ -1,0 +1,133 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+import re
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentsketchextractch1 by bcov - Extract chain 1 of the silent file')
+    eprint("Usage:")
+    eprint("        silentsketchextractch1 myfile.silent > myfile.seq")
+    eprint("")
+    eprint("Notes:")
+    eprint("        This is super sketchy and might produce corrupt structures.")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+
+silent_index = silent_tools.get_silent_index( silent_file )
+
+
+sys.stdout.write( silent_tools.silent_header( silent_index ) )
+sys.stdout.flush()
+
+annotated_seq_re = re.compile("([^][ ]([[][^]]*[]])?)") # A letter followed by an optional [expression]
+
+
+with open(silent_file, errors='ignore') as sf:
+    for tag in silent_index['tags']:
+
+        structure = silent_tools.get_silent_structure_file_open( sf, silent_index, tag )
+
+        new_structure_header = []
+        new_structure_struct = []
+        new_size = None
+        ft = None
+        res_num = None
+        annotated_seq = None
+        noncanon_connects = []
+        for line in structure:
+            if ( line[0] in "HLE" ):
+                new_structure_struct.append(line)
+                continue
+
+            if ( line.startswith("RT") ):  # There shall be no RTs within 1 chain
+                continue
+
+            if ( line.startswith("CHAIN_ENDINGS")): # Specifies the number of struct lines
+                new_size = int(line.split()[1])
+                continue
+
+            if ( line.startswith("FOLD_TREE") ): # We need to remove removed residues
+                ft = line
+                continue
+
+            if ( line.startswith("RES_NUM") ): # We need to remove removed residues
+                res_num = line
+                continue
+
+            if ( line.startswith("ANNOTATED_SEQUENCE") ):
+                annotated_seq = line
+                continue
+
+            if ( line.startswith("NONCANONICAL_CONNECTION") ):
+                noncanon_connects.append(line)
+                continue
+
+            new_structure_header.append(line)
+
+
+        if ( new_size is None ):
+            eprint("No CHAIN_ENDINGS. Was this a monomer?:", tag)
+            continue
+
+        new_noncanon_connects = ""
+        if ( len(noncanon_connects) > 0 ):
+            new_connects = []
+            for connect_line in noncanon_connects:
+                sp = connect_line.strip().split()
+                if ( int(sp[1]) > new_size or int(sp[3]) > new_size ):
+                    continue
+                new_connects.append(connect_line)
+            new_noncanon_connects = "".join(new_connects)
+
+        # Trim the RES_NUM thing down to just our residues
+        new_res_num = ""
+        if ( not res_num is None ):
+            chain_str = silent_tools.get_chain_ids( structure, tag, res_num )
+            chain_str = chain_str[:new_size]
+
+            new_res_num = "RES_NUM " + silent_tools.chain_ids_to_silent_format(chain_str) + " " + tag + "\n"
+
+        # Remove any fold_tree components that talk about residues outside our range
+        new_ft = ""
+        if ( not ft is None ):
+            split_ft = ft.strip().split()
+            assert( (len(split_ft) - 2) % 4 == 0 )
+
+            ft_parts = split_ft[:1]
+            for i in range( (len(split_ft) - 2) // 4 ):
+                part = split_ft[i*4+1:i*4+5]
+                if ( int(part[1]) > new_size or int(part[2]) > new_size ):
+                    continue
+                ft_parts.append(" ".join(part))
+            ft_parts.append(tag)
+
+            new_ft = "  ".join(ft_parts) + "\n"
+
+        new_annotated_seq = ""
+        if ( not annotated_seq is None ):
+            annotated_seq = annotated_seq.split()[1]
+
+            new_annotated_seq = "ANNOTATED_SEQUENCE: "
+            new_annotated_seq += "".join(x[0] for x in annotated_seq_re.findall(annotated_seq)[:new_size])
+            new_annotated_seq += " " + tag + "\n"
+
+
+
+        sys.stdout.write("".join(new_structure_header))
+        sys.stdout.write(new_annotated_seq + new_res_num + new_ft + new_noncanon_connects)
+        sys.stdout.write("".join(new_structure_struct[:new_size]))
+        sys.stdout.flush()
+
+
+

@@ -1,0 +1,78 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentoopsscoreslice by bcov - an oops tool that slices by score')
+    eprint('   oops tool -- reads file once, because, "oops that\'s a lot of data"')
+    eprint("Usage:")
+    eprint("        silentoopsscoreslice myfile.silent \"s[1] < -30 and len(s) == 50\"")
+    eprint("             Where s = score_line.split()")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+expression = sys.argv[2]
+
+expression_func = eval("lambda s: " + expression)
+
+
+scoreline, f = silent_tools.assert_is_silent_and_get_scoreline(silent_file, True)
+
+
+sys.stdout.write( silent_tools.silent_header_slim( "A", scoreline, "BINARY" ) )
+sys.stdout.flush()
+
+have_line = False
+while (True):
+    if ( not have_line ):
+        try:
+            line = next(f)
+        except:
+            break
+
+    have_line = False
+
+    # we should never be mid-structure
+    # but silent files can be corrupt so don't freak out
+    if ( line[0] != "S" ):
+        continue
+
+    if ( line.startswith("SEQUENCE") ):
+        continue
+
+    if ( not line.startswith("SCORE") ):
+        continue
+
+    if ( "description" in line ):
+        continue
+
+    # ok, we have the first line of a structure
+
+    s = line.split()
+    # eprint(len(s), s[45])
+    # eprint(float(s[45]))
+
+    keep_structure = expression_func( s )
+
+    structure, line = silent_tools.rip_structure_by_lines(f, line, keep_structure)
+    have_line = True
+
+    if ( keep_structure ):
+        sys.stdout.write("".join(structure))
+        sys.stdout.flush()
+
+    if ( line is None ):
+        break
+
+
+
