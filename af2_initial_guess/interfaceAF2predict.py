@@ -476,11 +476,9 @@ def featurize(tag, sfd_in):
 
 # Checkpointing Functions
 
-def record_checkpoint( tag_buffer, checkpoint_filename ):
-    with open( checkpoint_filename, 'a' ) as f:
-        for tag in tag_buffer:
-            f.write( tag )
-            f.write( '\n' )
+def record_checkpoint( tag, checkpoint_filename ):
+    f.write( tag )
+    f.write( '\n' )
 
 def determine_finished_structs( checkpoint_filename ):
     done_set = set()
@@ -506,7 +504,6 @@ tmppdb = 'tmp.pdb'
 
 checkpoint_filename = "check.point"
 scorefilename = "out.sc"
-tag_buffer = []
 
 finished_structs = determine_finished_structs( checkpoint_filename )
 
@@ -519,7 +516,6 @@ for idx,tag in enumerate(alltags):
   feature_dict, initial_guess, binderlen = featurize(tag, sfd_in)
   predict_structure(tag, feature_dict, binderlen, initial_guess, sfd_out, scorefilename)
 
-  record_checkpoint( tag_buffer, checkpoint_filename )
-  tag_buffer = []
+  record_checkpoint( tag, checkpoint_filename )
 
 print('done predicting')
