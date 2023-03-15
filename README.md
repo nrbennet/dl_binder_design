@@ -20,6 +20,11 @@ channels:
 - Navigate to <base_dir>/include
 - Run `conda env create -f dl_binder_design.yml`
 
+## Clone ProteinMPNN
+# This repo requires the code from ProteinMPNN to work. It expects this code to be in the mpnn_fr directory so we can just clone it to be there
+- Naviate to <base_dir>/mpnn_fr
+- Run `git clone https://github.com/dauparas/ProteinMPNN.git`
+
 ## Silent Tools
 The scripts contained in this repository work with a type of file called silent files. These are essentially a bunch of compressed .pdb files that are all stored in one file. Working with silent files is conventient and saves a lot of disk space when dealing with many thousands of structures.
 
