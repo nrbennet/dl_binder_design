@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+import math
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) != 3):
+    eprint("")
+    eprint("silentsplitshuf by bcov - a tool to split a silentfile into equal size parts while shuffling")
+    eprint("Usage:")
+    eprint("        silentsplit myfile.silent TAGS_PER_SILENT_FILE")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+
+if ( not os.path.exists(silent_file) ):
+    eprint("silentsplitshuf: File not found " + silent_file)
+    assert(False)
+
+tags_per = sys.argv[2]
+try:
+    tags_per = int(tags_per)
+    assert(tags_per > 0)
+except:
+    eprint("silentsplitshuf: Second argument must be a number greater than 0")
+    assert(False)
+
+
+alpha = "abcdefghijklmnopqrstuvwxyz"
+def get_split_str(width, number):
+    out_str = ""
+    for i in range(width):
+        out_str = alpha[number % 26] + out_str
+        number //= 26
+    return "x" + "z"*(width-2) + out_str
+
+def get_split_str2(number):
+    for width in range(2, 10000):
+        this_num = 26**(width-1) * 25 
+        if ( number < this_num ):
+            return get_split_str(width, number)
+        number -= this_num
+
+def split_name_gen(number):
+    names = []
+    for i in range(number):
+        names.append(get_split_str2(i))
+    return names
+
+
+silent_index = silent_tools.get_silent_index( silent_file )
+
+open_silent_file = open( silent_file )
+
+
+total_structures = len(silent_index['tags'])
+num_files = int(math.ceil(total_structures / tags_per))
+
+# This is the part where you're like. Oh yeah, that's a good idea...
+
+files = []
+for name in split_name_gen(num_files):
+    # f = open(name + ".silent", "w" )
+    # f.write( silent_tools.silent_header(silent_index) )
+    files.append( name )
+
+# Setting seek size to tags_per and only changing file idx once per seek size keeps the structures in order
+seek_size = tags_per
+cur_struct = 0
+ifile = 0
+
+while cur_struct < total_structures:
+
+    if ( cur_struct + seek_size > total_structures ):
+        seek_size = total_structures - cur_struct
+
+    # Nate thinks this doesn't work with pdblite files yet
+    structures = silent_tools.get_silent_structures_true_slice( open_silent_file, 
+                        silent_index, cur_struct, cur_struct+seek_size, True )
+
+    with open(files[ifile] + ".silent", "w" ) as f:
+        f.write( silent_tools.silent_header(silent_index) )
+        for structure in structures:
+            f.write(structure)
+    
+    # Moving this out here will keep the structures in order
+    # files[ifile].close()
+    ifile += 1
+    cur_struct += seek_size
+
+
+open_silent_file.close()
+
+# for file in files:
+#     file.close()

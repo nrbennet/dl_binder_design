@@ -1,0 +1,90 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+from multiprocessing import Pool
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+# This code assumes that the target backbone is fixed and will need major revisions if that is every changed - NRB
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentappendwaters by Nate - a tool to allow you to add waters directly to a silent file')
+    eprint("Usage:")
+    eprint("        silentappendwaters solvated_centered_target.silent file_of_docks.silent > file_of_solvated_docks.silent")
+    eprint("")
+    eprint(" WARNING!!! This only works in the very specific context of adding waters to a miniprotein binder dock where" )
+    eprint(" the waters are assigned chain B (the target's chain). If you find the need to use this is another case, talk" )
+    eprint("                                     to Nate (nrbennet@uw.edu) ")
+    sys.exit(1)
+
+water_file = sys.argv[1]
+silent_file = sys.argv[2]
+n_cores = 1
+if len(sys.argv) > 3:
+    n_cores = int(sys.argv[3])
+    try:
+        available = int(silent_tools.cmd( "echo $SLURM_CPUS_ON_NODE" ))
+    except():
+        eprint("Parallel only available on a qlogin node")
+        sys.exit( 0 )
+    if n_cores > available:
+        eprint( "More cpus requested (%i) than available (%i)"%(n_cores, available) )
+        sys.exit( 0 )
+
+silent_index = silent_tools.get_silent_index( silent_file )
+
+( RT_lines, xyz_lines, ann_seq_append, seq_append, edge_list ) = silent_tools.get_water_info( water_file )
+
+# I'm going to do this in 1000 struct chunks to minimize the amount of data being stored. this can easily be changed
+seek_size = 1000
+cur_struct = 0
+ifile = 0
+total_structures = len(silent_index['tags'])
+header = silent_tools.silent_header( silent_index ).split('\n')
+header[0] += seq_append
+
+sys.stdout.write( '\n'.join(header) )
+sys.stdout.flush()
+
+parallel = n_cores > 1
+if parallel:
+    pool = Pool( n_cores )
+
+with open( silent_file ) as open_silent_file:
+    while cur_struct < total_structures:
+
+        if ( cur_struct + seek_size > total_structures ):
+            seek_size = total_structures - cur_struct
+
+        structures = silent_tools.get_silent_structures_true_slice( open_silent_file, 
+                            silent_index, cur_struct, cur_struct+seek_size, True )
+
+        for structure in structures:
+            if parallel:
+                retval = pool.apply_async( silent_tools.solvate, args = [structure.split('\n'), RT_lines, xyz_lines, ann_seq_append, seq_append, edge_list] )
+                solvated_structure = retval.get()
+            else:
+                solvated_structure = silent_tools.solvate( structure.split('\n'), RT_lines, xyz_lines, ann_seq_append, seq_append, edge_list )
+            sys.stdout.write("\n".join(solvated_structure))
+            sys.stdout.flush()
+
+        cur_struct += seek_size
+
+if parallel:
+    pool.close()
+    pool.join()
+
+
+
+
+
+
+
+

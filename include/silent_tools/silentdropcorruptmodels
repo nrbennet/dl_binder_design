@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+import re
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentdropcorruptmodels by bcov - drop models with wrong number of residues')
+    eprint("Usage:")
+    eprint("        silentdropcorruptmodels myfile.silent > fixed.silent")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+
+silent_index = silent_tools.get_silent_index( silent_file, accept_garbage=True)
+
+
+is_binary = silent_index['silent_type'] == "BINARY"
+is_protein = silent_index['silent_type'] == "PROTEIN"
+
+if ( not is_binary and not is_protein ):
+    eprint("silentdropcorruptmodels: Unknown silent type. Trying BINARY")
+    is_binary = True
+
+sys.stdout.write( silent_tools.silent_header_fix_corrupt( silent_index ) )
+sys.stdout.flush()
+
+with open(silent_file, errors='ignore') as sf:
+    for tag in silent_index['tags']:
+
+        structure = silent_tools.get_silent_structure_file_open( sf, silent_index, tag )
+
+        try:
+            sequence_chunks = silent_tools.get_sequence_chunks( structure, tag )
+        except:
+            eprint("silentdropcorruptmodels: Error reading sequence: %s"%(tag))
+            continue
+        if ( sequence_chunks is None ):
+            continue
+        sequence = "".join(sequence_chunks)
+        seqlen = len(sequence)
+
+
+        assert( is_binary ^ is_protein )
+
+        num_res_lines = 0
+        for line in structure:
+            if ( is_binary ):
+                if ( len(line) == 0 ):
+                    continue
+                if ( line[0] in "HEL" ):
+                    num_res_lines += 1
+            if ( is_protein ):
+                if ( len(line) < 6 ):
+                    continue
+                if ( line[5] in "HEL" ):
+                    num_res_lines += 1
+
+
+        if ( seqlen != num_res_lines ):
+            eprint("silentdropcorruptmodels: Found %5i res expected %5i res: %s"%
+                (num_res_lines, seqlen, tag))
+        else:
+            sys.stdout.write("".join(structure))
+            sys.stdout.flush()
+
+

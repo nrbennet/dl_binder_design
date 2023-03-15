@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+import math
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) != 3):
+    eprint("")
+    eprint("silentsplitshuf by bcov - a tool to split a silentfile into equal size parts while shuffling")
+    eprint("Usage:")
+    eprint("        silentsplit myfile.silent TAGS_PER_SILENT_FILE")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+
+if ( not os.path.exists(silent_file) ):
+    eprint("silentsplitshuf: File not found " + silent_file)
+    assert(False)
+
+tags_per = sys.argv[2]
+try:
+    tags_per = int(tags_per)
+    assert(tags_per > 0)
+except:
+    eprint("silentsplitshuf: Second argument must be a number greater than 0")
+    assert(False)
+
+
+alpha = "abcdefghijklmnopqrstuvwxyz"
+def get_split_str(width, number):
+    out_str = ""
+    for i in range(width):
+        out_str = alpha[number % 26] + out_str
+        number //= 26
+    return "x" + "z"*(width-2) + out_str
+
+def get_split_str2(number):
+    for width in range(2, 10000):
+        this_num = 26**(width-1) * 25 
+        if ( number < this_num ):
+            return get_split_str(width, number)
+        number -= this_num
+
+
+silent_index = silent_tools.get_silent_index( silent_file )
+
+with open( silent_file, errors='ignore' ) as open_silent_file:
+
+    total_structures = len(silent_index['tags'])
+    cur_i = 0
+    ifile = 0
+
+    while cur_i < total_structures:
+
+        fname = get_split_str2(ifile)
+
+        ub = min( total_structures, cur_i + tags_per )
+
+        with open(fname, "w") as f:
+            f.write( silent_tools.silent_header( silent_index ) )
+            f.write( silent_tools.get_silent_structures_true_slice( open_silent_file, 
+                                silent_index, cur_i, ub, raw_string=True ) )
+
+        ifile += 1
+        cur_i += tags_per
+
+
+
+
+
+
+

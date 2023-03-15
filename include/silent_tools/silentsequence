@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+import re
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentsequence by bcov - extract the sequences from a silent file')
+    eprint("Usage:")
+    eprint("        silentsequence myfile.silent > myfile.seq")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+
+silent_index = silent_tools.get_silent_index( silent_file )
+
+with open(silent_file, errors='ignore') as sf:
+    for tag in silent_index['tags']:
+
+        structure = silent_tools.get_silent_structure_file_open( sf, silent_index, tag )
+
+        sequence_chunks = silent_tools.get_sequence_chunks( structure )
+
+        if (sequence_chunks is None):
+            continue
+
+        sys.stdout.write(" ".join(sequence_chunks) + " " + tag + "\n")
+        sys.stdout.flush()
+
+

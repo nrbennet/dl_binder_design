@@ -1,0 +1,45 @@
+#!/bin/bash
+
+tags=""
+
+tmp_list=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)
+tmp_list="tmp_${tmp_list}.list"
+rm $tmp_list > /dev/null 2>&1
+
+if [ -p /dev/stdin ]; then
+    while read tag; do
+        echo $tag
+    done > $tmp_list
+
+fi
+
+for tag in "$@"; do
+    echo $tag
+done >> $tmp_list
+
+
+if [ ! -f $tmp_list ]; then
+    echo >&2 ""
+    echo >&2 "silentfrompdbsparallel by bcov - a tool to make a silent file from pdbs in parallel"
+    echo >&2 "Usage:"
+    echo >&2 "        cat list_of_tags.list | silentfrompdbs > silent.silent"
+    echo >&2 "                             or"
+    echo >&2 "        silentfrompdbs tag1 tag2 tag3 > silent.silent"
+    exit 1
+fi
+
+tmp_fol=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)
+tmp_fol="tmp_${tmp_fol}"
+
+cpus=16 #$(parallel --number-of-cores)
+
+splitno=$((( $(wc -l $tmp_list | awk '{print $1}') / ($cpus * 8) + 1)))
+
+mkdir $tmp_fol
+
+split -l $splitno $tmp_list $tmp_fol/x
+
+ls $tmp_fol/x* | parallel -j16 'cat {} | silentfrompdbs'
+
+rm $tmp_list
+rm -r $tmp_fol

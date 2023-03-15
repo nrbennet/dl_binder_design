@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+from collections import defaultdict
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentclearscores by bcov - a tool to clear the scores in a silentfile')
+    eprint("Usage:")
+    eprint("        silentclearscores myfile.silent > new.silent")
+    eprint("")
+    sys.exit(1)
+
+
+silent_file = sys.argv[1]
+
+silent_index = silent_tools.get_silent_index( silent_file )
+
+assert(os.path.exists(silent_file))
+
+silent_index['scoreline'] = "SCORE: score description"
+
+
+sys.stdout.write( silent_tools.silent_header( silent_index ) )
+sys.stdout.flush()
+
+with open(silent_file, errors='ignore' ) as sf:
+    for itag, tag in enumerate(silent_index['tags']):
+
+        structure = silent_tools.get_silent_structure_file_open( sf, silent_index, tag )
+
+        for i in range(len(structure)):
+            if ( structure[i].startswith("SCORE:") ):
+                structure[i] = "SCORE: 0 " + silent_index['orig_tags'][itag] + "\n"
+                break
+
+        sys.stdout.write("".join(structure))
+        sys.stdout.flush()
+
+
+
+
+

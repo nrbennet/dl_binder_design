@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+import re
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentdropcorruptmodels by bcov - drop models with wrong number of residues')
+    eprint("Usage:")
+    eprint("        silentdropcorruptmodels myfile.silent > fixed.silent")
+    eprint("")
+    eprint("Note: Like the other oops series tools, this script performs a one-pass operation")
+    eprint("        on your file without building an index. Currently only BINARY supported.")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+
+
+scoreline, f = silent_tools.assert_is_silent_and_get_scoreline(silent_file, return_f=True, accept_garbage=True)
+
+sys.stdout.write( silent_tools.silent_header_fix_corrupt_slim( "A", scoreline, "BINARY" ) )
+sys.stdout.flush()
+
+
+first_line = None
+try:
+    first_line = next(f)
+except:
+    pass
+
+index = set()
+dup_index = {}
+
+while (not first_line is None):
+    # try:
+    structure, first_line = silent_tools.rip_structure_by_lines_arbitrary_start(f, first_line)
+    # except:
+    #     break
+
+    tag = structure[0].split()[-1]
+
+    if ( tag in index ):
+        # speedup
+        if ( tag in dup_index ):
+            number = dup_index[tag]
+        else:
+            number = 1
+        # /speedup
+
+        while (tag + "_%i"%number in index):
+            number += 1
+
+        # speedup
+        dup_index[tag] = number
+        # /speedup
+        new_tag = tag + "_%i"%number
+
+        for iline in range(len(structure)):
+            structure[iline] = structure[iline].replace(tag, new_tag)
+
+        tag = new_tag
+
+
+    index.add(tag)
+
+
+
+    try:
+        sequence_chunks = silent_tools.get_sequence_chunks( structure, tag )
+    except:
+        eprint("silentoopsdropcorruptmodels: Error reading sequence: %s"%(tag))
+        continue
+    if ( sequence_chunks is None ):
+        continue
+    sequence = "".join(sequence_chunks)
+    seqlen = len(sequence)
+
+    is_binary = True
+    is_protein = False
+
+    num_res_lines = 0
+    for line in structure:
+        if ( is_binary ):
+            if ( len(line) == 0 ):
+                continue
+            if ( line[0] in "HEL" ):
+                num_res_lines += 1
+        if ( is_protein ):
+            if ( len(line) < 6 ):
+                continue
+            if ( line[5] in "HEL" ):
+                num_res_lines += 1
+
+
+    if ( seqlen != num_res_lines ):
+        eprint("silentoopsdropcorruptmodels: Found %5i res expected %5i res: %s"%
+            (num_res_lines, seqlen, tag))
+    else:
+        sys.stdout.write("".join(structure))
+        sys.stdout.flush()
+
+

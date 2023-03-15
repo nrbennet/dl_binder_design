@@ -1,0 +1,29 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+    echo >&2 ""
+    echo >&2 "silentdropduplicatesequences by bcov - a tool to remove duplicate sequence entries from a silent file"
+    echo >&2 "Usage:"
+    echo >&2 "        silentdropduplicatesequences myfile.silent > uniq.silent"
+    exit 1
+fi
+
+
+
+silent=$1
+
+
+tmp_name=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)
+
+silentsequence $silent > $tmp_name.seq
+# merge all columns except last one
+#   (Find all columns that have a space before and after 
+#    and delete the space before. )
+perl -pi -e 's/ ([^ ]+)(?= )/\1/g' $tmp_name.seq
+
+# Get unique lines and slice
+sort -k1 $tmp_name.seq | sort -uk1,1 $tmp_name.seq | awk '{print $2}' | silentslice $1
+
+rm $tmp_name.seq
+
+

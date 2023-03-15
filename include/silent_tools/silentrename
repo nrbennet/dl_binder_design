@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+import re
+import stat
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentrename by bcov - a tool to rename the tags of a silent file')
+    eprint("Usage:")
+    eprint("        cat list_of_tags.list | silentrename myfile.silent > new.silent")
+    eprint("                             or")
+    eprint("        silentrename myfile.silent tag1 tag2 tag3 > new.silent")
+    eprint("")
+    eprint("Important! You must pass the same number of tags that there are in the")
+    eprint("    silent file.")
+    eprint("")
+    eprint("Example usage:")
+    eprint("")
+    eprint("silentls my.silent > tags.list")
+    eprint("vi tags.list")
+    eprint("cat tags.list | silentrename my.silent > new.silent")
+    eprint("")
+    eprint("silentls my.silent | sed 's/_0001$//g' | silentrename my.silent > new.silent")
+    sys.exit(1)
+
+silent_file = sys.argv[1]
+
+tag_buffers = []
+if ( stat.S_ISFIFO(os.stat("/dev/stdin").st_mode) ):
+    tag_buffers += sys.stdin.readlines()
+tag_buffers += sys.argv[2:]
+
+tags = []
+for line in tag_buffers:
+    line = line.strip()
+    if (len(line) == 0):
+        continue
+    tags.append(line)
+
+
+silent_index = silent_tools.get_silent_index( silent_file )
+
+if (len(silent_index['tags']) != len(tags)):
+    eprint("Error! Number of input tags (%i) is not equal to number of tags in silent file (%i)!"%
+        (len(tags), len(silent_index['tags'] )))
+    sys.exit(1)
+
+
+sys.stdout.write( silent_tools.silent_header( silent_index ) )
+sys.stdout.flush()
+
+# old slow
+# with open(silent_file) as sf:
+#     for itag in range(len(tags)):
+
+#         index_tag = silent_index['tags'][itag]
+#         structure = silent_tools.get_silent_structure_file_open( sf, silent_index, index_tag )
+
+#         original_tag = silent_index['orig_tags'][itag]
+#         sys.stdout.write("".join(structure).replace(original_tag, tags[itag]))
+#         sys.stdout.flush()
+
+
+total_structures = len(silent_index['tags'])
+seek_size = 1000
+cur_struct = 0
+cur_write = 0
+
+with open(silent_file, errors='ignore') as sf:
+    while cur_struct < total_structures:
+
+        if ( cur_struct + seek_size > total_structures ):
+            seek_size = total_structures - cur_struct
+
+        structures = silent_tools.get_silent_structures_true_slice( sf, 
+                            silent_index, cur_struct, cur_struct+seek_size, True )
+
+        for structure in structures:
+            original_tag = silent_index['orig_tags'][cur_write]
+            sys.stdout.write(structure.replace(original_tag, tags[cur_write]))
+            sys.stdout.flush()
+            cur_write += 1
+
+        cur_struct += seek_size
+
+        assert(cur_write == cur_struct)
+
+
+

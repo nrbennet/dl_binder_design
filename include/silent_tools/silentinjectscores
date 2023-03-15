@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+
+import distutils.spawn
+import os
+import sys
+sys.path.append(os.path.dirname(distutils.spawn.find_executable("silent_tools.py")))
+import silent_tools
+from silent_tools import eprint
+from collections import defaultdict
+
+# Don't throw an error when someone uses head
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL) 
+
+if (len(sys.argv) == 1):
+    eprint("")
+    eprint('silentinjectscores by bcov - a tool rewrite the scores in a silentfile')
+    eprint('   Uses mv-like syntax')
+    eprint("Usage:")
+    eprint("        silentrename myscores.sc myfile.silent > new.silent")
+    eprint("")
+    eprint("Important! The tags must match exactly. silentrename can rename scorefiles if needed")
+    eprint("")
+    eprint("This also works with two silent files")
+    eprint("")
+    sys.exit(1)
+
+
+score_file = sys.argv[1]
+silent_file = sys.argv[2]
+
+assert(os.path.exists(silent_file))
+assert(os.path.exists(score_file))
+
+# First we need to make sure that there's only one kind of score inside the scorefile
+# This doesn't technically need to be true, but I don't want to deal with it
+
+tmpfile = silent_tools.cmd("head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13").strip()
+assert(len(tmpfile) > 0)
+silent_tools.cmd("cp %s %s"%(score_file, tmpfile))
+
+stdout,stderr,code = silent_tools.cmd2("silentscorefile %s"%tmpfile)
+silent_tools.cmd("rm %s"%(tmpfile))
+
+if ( code != 0 ):
+    silent_tools.cmd("rm %s.sc"%(tmpfile))
+    eprint(stderr)
+    sys.exit(1)
+
+if ( "Multiple scorefiles" in stderr ):
+    silent_tools.cmd("rm %s.sc"%(tmpfile))
+    eprint("silentinjectscores: Scorefile contains multiple different score headers. Aborting")
+    sys.exit(1)
+
+score_index = silent_tools.get_silent_index( tmpfile + ".sc" )
+silent_index = silent_tools.get_silent_index( silent_file )
+
+tag_exists = defaultdict(lambda : False, {})
+bad = ""
+for tag in score_index['tags']:
+    if ( tag in silent_index['tags'] ):
+        tag_exists[tag] = True
+    else:
+        bad = tag
+        break
+for tag in silent_index['tags']:
+    if ( not tag_exists[tag] ):
+        bad = tag
+        break
+
+if ( bad != "" ):
+    if ( len(score_index['tags']) != len(silent_index['tags'])):
+        eprint("silentinjectscores: Files don't have same number of structures")
+    else:
+        eprint("silentinjectscores: Mismatch between files. Example: %s"%bad)
+    silent_tools.cmd("rm %s.sc"%(tmpfile))
+    silent_tools.cmd("rm %s.sc.idx"%(tmpfile))
+    sys.exit(1)
+
+
+sys.stdout.write( silent_tools.silent_header( score_index ) )
+sys.stdout.flush()
+
+with open(silent_file, errors='ignore') as sf:
+    with open(tmpfile + ".sc") as scoref:
+        for tag in silent_index['tags']:
+
+            structure = silent_tools.get_silent_structure_file_open( sf, silent_index, tag )
+
+            for i in range(len(structure)):
+                if ( structure[i].startswith("SCORE:") ):
+                    structure[i] = silent_tools.get_silent_structure_file_open( scoref, score_index, tag )[0]
+                    break
+
+            sys.stdout.write("".join(structure))
+            sys.stdout.flush()
+
+
+
+silent_tools.cmd("rm %s.sc"%(tmpfile))
+silent_tools.cmd("rm %s.sc.idx"%(tmpfile))
+
+
+

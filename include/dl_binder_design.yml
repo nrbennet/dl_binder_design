@@ -1,0 +1,24 @@
+name: dl_binder_design
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+    #- https://conda.graylab.jhu.edu
+  - https://pose:foldtree@conda.graylab.jhu.edu
+dependencies:
+  - cudatoolkit=11.1
+  - python=3.9
+  - pytorch=1.9
+  - pyrosetta
+  - biopython
+  - ml-collections
+  - tensorflow
+  - pip
+
+  - pip:
+    - --find-links https://storage.googleapis.com/jax-releases/jax_cuda_releases.html 
+    - jax==0.2.19
+    - jaxlib==0.1.70+cuda111
+    - dm-haiku==0.0.5
+    - dm-tree==0.1.6
