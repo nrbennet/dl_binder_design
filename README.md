@@ -21,7 +21,7 @@ channels:
 - Run `conda env create -f dl_binder_design.yml`
 
 ## Clone ProteinMPNN
-# This repo requires the code from ProteinMPNN to work. It expects this code to be in the mpnn_fr directory so we can just clone it to be there
+### This repo requires the code from ProteinMPNN to work. It expects this code to be in the mpnn_fr directory so we can just clone it to be there
 - Naviate to <base_dir>/mpnn_fr
 - Run `git clone https://github.com/dauparas/ProteinMPNN.git`
 
