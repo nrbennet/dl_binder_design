@@ -477,8 +477,9 @@ def featurize(tag, sfd_in):
 # Checkpointing Functions
 
 def record_checkpoint( tag, checkpoint_filename ):
-    f.write( tag )
-    f.write( '\n' )
+    with open(checkpoint_filename, 'a') as f:
+        f.write( tag )
+        f.write( '\n' )
 
 def determine_finished_structs( checkpoint_filename ):
     done_set = set()
