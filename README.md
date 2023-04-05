@@ -52,7 +52,7 @@ This will create a file titled `out.silent` containing the AF2 predictions of yo
 
 Running design with ProteinMPNN-FastRelax cycling is also simple:
 
-`<base_dir>/mpnn_fr/dl_interface_design.py -silent my_designs.silent`
+`<base_dir>/mpnn_fr/dl_interface_design.py -silent my_designs.silent -output_intermediates -checkpoint_path <base_dir>/mpnn_fr/ProteinMPNN/vanilla_model_weights/v_48_020.pt`
 
 This will create a file titled `out.silent` containing your designs. This file can be fed directly to AF2 interface prediction.
 
