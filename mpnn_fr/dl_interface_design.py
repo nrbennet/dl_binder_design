@@ -24,6 +24,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument( "-silent", type=str, required=True, help='The name of a silent file to run this metric on. pdbs are not accepted at this point in time' )
 parser.add_argument( "-checkpoint_path", type=str, required=True, help='The path to the set of ProteinMPNN model weights that you would like to use' )
 parser.add_argument( "-relax_cycles", type=int, default="1", help="The number of ProteinMPNN->FastRelax cycles to perform (default 2)" )
+parser.add_argument( "-output_intermediates", action="store_true", help='Whether to write all intermediate sequences from the relax cycles to disc (defaut False)' )
 parser.add_argument( "-temperature", type=float, default=0.000001, help='The temperature to use for ProteinMPNN sampling (default 0)' )
 parser.add_argument( "-augment_eps", type=float, default=0, help='The variance of random noise to add to the atomic coordinates (default 0)' )
 parser.add_argument( "-omit_AAs", type=str, default='X', help='A string off all residue types (one letter case-insensitive) that you would not like to use for design. Letters not corresponding to residue types will be ignored' )
@@ -137,6 +138,10 @@ def dl_design( pose, tag, og_struct, mpnn_model, sfd_out ):
         seq, mpnn_score = seqs_scores[0] # We know there is only one entry
         pose = thread_mpnn_seq( pose, seq )
 
+        if args.output_intermediates:
+            tag = f"{prefix}_0_cycle{cycle}"
+            add2silent( pose, tag, sfd_out )
+
         pose = relax_pose(pose)
 
     # Do the final sequence assignment
@@ -149,7 +154,7 @@ def dl_design( pose, tag, og_struct, mpnn_model, sfd_out ):
     seq, mpnn_score = seqs_scores[0] # We know there is only one entry
     pose = thread_mpnn_seq( pose, seq )
 
-    tag = f"{prefix}_0_cycle{args.relax_cycles}"
+    tag = f"{prefix}_0_cycle{cycle}"
 
     add2silent( pose, tag, sfd_out )
 
