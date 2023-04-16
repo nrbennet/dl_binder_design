@@ -441,6 +441,10 @@ def input_check( pdbfile, tag ):
         if not splits[0] == "ATOM": continue
 
         if splits[2] == 'CA':
+            # Check if chain and residue index columns were concatenated
+            if len(splits[4])>1:
+                splits.insert(5, splits[4][1:])
+                splits[4] = splits[4][0]
             # Only checking residue index at CA atom
             residx = splits[5]
             if residx in seen_indices:
