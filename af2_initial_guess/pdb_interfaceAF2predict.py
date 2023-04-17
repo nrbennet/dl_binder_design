@@ -376,7 +376,7 @@ def generate_feature_dict( pdbfile ):
 
   return feature_dict, initial_guess, len(seq_list[0]) 
 
-def input_check(pdbfile):
+def input_check( pdbfile, tag ):
     with open(pdbfile,'r') as f: lines = f.readlines()
 
     seen_indices = set()
@@ -387,26 +387,24 @@ def input_check(pdbfile):
         
         if len(line) == 0: continue
 
-        splits = line.split()
-
-        if splits[0] == "TER":
+        if line[:3] == "TER":
             chain1 = False
             continue
 
-        if not splits[0] == "ATOM": continue
+        if not line[:4] == "ATOM": continue
 
-        if splits[2] == 'CA':
+        if line[12:16].strip() == 'CA':
             # Only checking residue index at CA atom
-            residx = splits[5]
+            residx = line[22:27].strip()
             if residx in seen_indices:
-                sys.exit( f"\nNon-unique residue indices detected for File: {pdbfile}. " +
+                sys.exit( f"\nNon-unique residue indices detected for tag: {tag}. " +
                 "This will cause AF2 to yield garbage outputs. Exiting." )
 
             seen_indices.add(residx)
 
-        if ( not splits[4] == "A" ) and chain1:
+        if ( not line[21:22].strip() == "A" ) and chain1:
             sys.exit( f"\nThe first chain in the pose must be the binder and it must be chain A. " +
-                    f"File: {pdbfile} does not satisfy this requirement. Exiting." )
+                    f"Tag: {tag} does not satisfy this requirement. Exiting." )
 
 def featurize(pdb):
   
