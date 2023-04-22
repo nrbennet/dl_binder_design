@@ -7,3 +7,4 @@ af2_initial_guess/alphafold/model/tf/__pycache__
 af2_initial_guess/alphafold/__pycache__
 test/
 mpnn_fr/ProteinMPNN/
+mpnn_fr/__pycache__
