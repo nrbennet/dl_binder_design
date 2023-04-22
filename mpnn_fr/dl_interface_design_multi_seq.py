@@ -23,11 +23,10 @@ init("-beta_nov16 -in:file:silent_struct_type binary")
 parser = argparse.ArgumentParser()
 parser.add_argument( "-silent", type=str, required=True, help='The name of a silent file to run this metric on. pdbs are not accepted at this point in time' )
 parser.add_argument( "-checkpoint_path", type=str, required=True, help='The path to the set of ProteinMPNN model weights that you would like to use' )
-parser.add_argument( "-relax_cycles", type=int, default="1", help="The number of ProteinMPNN->FastRelax cycles to perform (default 2)" )
-parser.add_argument( "-output_intermediates", action="store_true", help='Whether to write all intermediate sequences from the relax cycles to disc (defaut False)' )
+parser.add_argument( "-seq_per_struct", type=int, default="1", help="The number of ProteinMPNN sequences to generate per input structure" )
 parser.add_argument( "-temperature", type=float, default=0.000001, help='The temperature to use for ProteinMPNN sampling (default 0)' )
 parser.add_argument( "-augment_eps", type=float, default=0, help='The variance of random noise to add to the atomic coordinates (default 0)' )
-parser.add_argument( "-omit_AAs", type=str, default='X', help='A string off all residue types (one letter case-insensitive) that you would not like to use for design. Letters not corresponding to residue types will be ignored' )
+parser.add_argument( "-omit_AAs", type=str, default='CX', help='A string off all residue types (one letter case-insensitive) that you would not like to use for design. Letters not corresponding to residue types will be ignored' )
 parser.add_argument( "-num_connections", type=int, default=48, help='Number of neighbors each residue is connected to (default 48)' )
 parser.add_argument( "-fix_FIXED_res", action="store_true", help='Whether to fix the sequence of residues labelled as FIXED or not (default False)' )
 
@@ -37,13 +36,6 @@ silent = args.__getattribute__("silent")
 omit_AAs = [ letter for letter in args.omit_AAs.upper() if letter in list("ARNDCQEGHILKMFPSTWYVX") ]
 
 rundir = os.path.dirname(os.path.realpath(__file__))
-
-xml = rundir + "/RosettaFastRelaxUtil.xml"
-objs = protocols.rosetta_scripts.XmlObjects.create_from_file( xml )
-
-# Load the movers we will need
-
-FastRelax = objs.get_mover( 'FastRelax' )
 
 silent_out = "out.silent"
 
@@ -90,8 +82,7 @@ def sequence_optimize( pdbfile, chains, model, fixed_res ):
 
     feature_dict = mpnn_util.generate_seqopt_features( pdbfile, chains )
 
-    seq_per_struct = 1
-    arg_dict = mpnn_util.set_default_args( seq_per_struct, omit_AAs=omit_AAs )
+    arg_dict = mpnn_util.set_default_args( args.seq_per_struct, omit_AAs=omit_AAs )
     arg_dict['temperature'] = args.temperature
 
     masked_chains = [ chains[0] ]
@@ -119,15 +110,6 @@ def get_chains( pose ):
     chains = [ pose.pdb_info().chain( i ) for i in [ endA, endB ] ]
 
     return chains
-
-def get_fixed_res(pose):
-    fixed_res = []
-    pdb_info = pose.pdb_info()
-    endA = pose.split_by_chain()[1].size()
-    for i in range(1,endA+1):
-        if pdb_info.res_haslabel(i,"FIXED"):
-            fixed_res.append(i)
-    return fixed_res
 
 def relax_pose( pose ):
     FastRelax.apply( pose )
@@ -160,35 +142,17 @@ def dl_design( pose, tag, og_struct, mpnn_model, sfd_out ):
         fixed_positions_dict[my_rstrip(pdbfile,'.pdb')] = {"A":fixed_res,"B":[]}
         print("Found residues with FIXED label, fixing the following residues: ", fixed_positions_dict[my_rstrip(pdbfile,'.pdb')])
 
-    for cycle in range(args.relax_cycles):
-        pose.dump_pdb( pdbfile )
-        chains = get_chains( pose )
-
-        seqs_scores = sequence_optimize( pdbfile, chains, mpnn_model, fixed_res )
-        os.remove( pdbfile )
-
-        seq, mpnn_score = seqs_scores[0] # We know there is only one entry
-        pose = thread_mpnn_seq( pose, seq )
-
-        pose = relax_pose(pose)
-
-        if args.output_intermediates:
-            tag = f"{prefix}_0_cycle{cycle}"
-            add2silent( pose, tag, sfd_out )
-
-    # Do the final sequence assignment
     pose.dump_pdb( pdbfile )
     chains = get_chains( pose )
 
-    seqs_scores = sequence_optimize( pdbfile, chains, mpnn_model, fixed_positions_dict )
+    seqs_scores = sequence_optimize( pdbfile, chains, mpnn_model, fixed_res)
     os.remove( pdbfile )
 
-    seq, mpnn_score = seqs_scores[0] # We know there is only one entry
-    pose = thread_mpnn_seq( pose, seq )
+    for idx, (seq, score) in enumerate(seqs_scores):
+        pose = thread_mpnn_seq( pose, seq )
+        tag = f"{prefix}_{idx}"
 
-    tag = f"{prefix}_0_cycle{cycle}"
-
-    add2silent( pose, tag, sfd_out )
+        add2silent( pose, tag, sfd_out )
 
 def main( pdb, silent_structure, mpnn_model, sfd_in, sfd_out ):
 
