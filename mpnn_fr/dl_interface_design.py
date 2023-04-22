@@ -29,6 +29,7 @@ parser.add_argument( "-temperature", type=float, default=0.000001, help='The tem
 parser.add_argument( "-augment_eps", type=float, default=0, help='The variance of random noise to add to the atomic coordinates (default 0)' )
 parser.add_argument( "-omit_AAs", type=str, default='X', help='A string off all residue types (one letter case-insensitive) that you would not like to use for design. Letters not corresponding to residue types will be ignored' )
 parser.add_argument( "-num_connections", type=int, default=48, help='Number of neighbors each residue is connected to (default 48)' )
+parser.add_argument( "-fix_FIXED_res", action="store_true", help='Whether to fix the sequence of residues labelled as FIXED or not (default False)' )
 
 args = parser.parse_args( sys.argv[1:] )
 silent = args.__getattribute__("silent")
@@ -117,6 +118,15 @@ def get_chains( pose ):
 
     return chains
 
+def get_fixed_res(pose):
+    fixed_res = []
+    pdb_info = pose.pdb_info()
+    endA = pose.split_by_chain()[1].size()
+    for i in range(1,endA+1):
+        if pdb_info.res_haslabel(i,"FIXED"):
+            fixed_res.append(i)
+    return fixed_res
+
 def relax_pose( pose ):
     FastRelax.apply( pose )
     return pose
@@ -128,6 +138,17 @@ def dl_design( pose, tag, og_struct, mpnn_model, sfd_out ):
     prefix = f"{tag}_dldesign"
     pdbfile = f"tmp.pdb"
 
+    if args.fix_FIXED_res:
+        fixed_res = get_fixed_res( pose )
+    else:
+        fixed_res = []
+
+    fixed_positions_dict = None
+    if len(fixed_res)>0:
+        fixed_positions_dict = {}
+        fixed_positions_dict[my_rstrip(pdbfile,'.pdb')] = {"A":fixed_res,"B":[]}
+        print("Found residues with FIXED label, fixing the following residues: ", fixed_positions_dict[my_rstrip(pdbfile,'.pdb')])
+
     for cycle in range(args.relax_cycles):
         pose.dump_pdb( pdbfile )
         chains = get_chains( pose )
@@ -138,11 +159,11 @@ def dl_design( pose, tag, og_struct, mpnn_model, sfd_out ):
         seq, mpnn_score = seqs_scores[0] # We know there is only one entry
         pose = thread_mpnn_seq( pose, seq )
 
+        pose = relax_pose(pose)
+
         if args.output_intermediates:
             tag = f"{prefix}_0_cycle{cycle}"
             add2silent( pose, tag, sfd_out )
-
-        pose = relax_pose(pose)
 
     # Do the final sequence assignment
     pose.dump_pdb( pdbfile )
