@@ -69,6 +69,8 @@ model_config.data.eval.max_msa_clusters = 5
 model_params = data.get_model_haiku_params(model_name=model_name, data_dir="/projects/ml/alphafold") # CHANGE THIS (directory where "params/ folder is")
 model_runner = model.RunModel(model_config, model_params)
 
+def range1(size): return range(1, size+1)
+
 def get_seq_from_pdb( pdb_fn ):
   to1letter = {
     "ALA":'A', "ARG":'R', "ASN":'N', "ASP":'D', "CYS":'C',
@@ -302,7 +304,7 @@ def generate_scoredict( outtag, start_time, binderlen, prediction_result, scoref
   print(score_dict)
   print( f"Tag: {outtag} reported success in {time} seconds" )
 
-  return score_dict
+  return score_dict, plddt_array 
 
 def process_output( tag, binderlen, start, feature_dict, prediction_result, sfd_out, scorefilename ):
     structure_module = prediction_result['structure_module']
@@ -328,9 +330,9 @@ def process_output( tag, binderlen, start, feature_dict, prediction_result, sfd_
     unrelaxed_pdb_path = f'temp_af2output.pdb'
     with open(unrelaxed_pdb_path, 'w') as f: f.write(unrelaxed_pdb_lines)
     
-    score_dict = generate_scoredict( outtag, start, binderlen, confidences, scorefilename )
+    score_dict, plddt_array = generate_scoredict( outtag, start, binderlen, confidences, scorefilename )
     
-    add2silent( outtag, unrelaxed_pdb_path, score_dict, binderlen, sfd_out )
+    add2silent( outtag, unrelaxed_pdb_path, score_dict, plddt_array, binderlen, sfd_out )
     os.remove( unrelaxed_pdb_path )
 
 def insert_truncations(residue_index, Ls):
@@ -341,10 +343,18 @@ def insert_truncations(residue_index, Ls):
 
     return residue_index
 
-def add2silent( tag, pdb, score_dict, binderlen, sfd_out ):
+def add2silent( tag, pdb, score_dict, plddt_array, binderlen, sfd_out ):
     pose = pose_from_file( pdb )
 
     pose = insert_chainbreaks( pose, binderlen )
+
+    info = pose.pdb_info()
+    for resi in range1( pose.size() ):
+      info.add_reslabel(resi, f"{plddt_array[resi-1]}")
+      for atom_i in range1( pose.residue(resi).natoms() ):
+        info.bfactor(resi, atom_i, plddt_array[resi-1])
+
+    pose.pdb_info(info)
 
     struct = sfd_out.create_SilentStructOP()
     struct.fill_struct( pose, tag )

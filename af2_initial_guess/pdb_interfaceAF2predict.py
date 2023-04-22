@@ -22,6 +22,8 @@ import scipy
 import jax
 import jax.numpy as jnp
 
+import glob
+
 from alphafold.common import residue_constants
 from alphafold.common import protein
 from alphafold.common import confidence
@@ -271,9 +273,9 @@ def generate_scoredict( outtag, start_time, binderlen, prediction_result, scoref
   print(score_dict)
   print( f"Tag: {outtag} reported success in {time} seconds" )
 
-  return score_dict
+  return score_dict, plddt_array
 
-def process_output( pdb, binderlen, start, feature_dict, prediction_result, sfd_out, scorefilename ):
+def process_output( pdb, binderlen, start, feature_dict, prediction_result, scorefilename ):
     structure_module = prediction_result['structure_module']
     this_protein = protein.Protein(
         aatype=feature_dict['aatype'][0],
@@ -293,15 +295,24 @@ def process_output( pdb, binderlen, start, feature_dict, prediction_result, sfd_
     
     unrelaxed_pdb_lines = protein.to_pdb(this_protein)
     
-    # TODO we are here
-    outfile = f'{tag}_af2pred'
-    unrelaxed_pdb_path = f'temp_af2output.pdb'
-    with open(unrelaxed_pdb_path, 'w') as f: f.write(unrelaxed_pdb_lines)
-    
-    score_dict = generate_scoredict( outtag, start, binderlen, confidences, scorefilename )
-    
-    # TODO need to add a way to insert chainbreaks in pdbs - NRB
+    tag = pdb.split('/')[-1].split('.')[0]
 
+    score_dict, plddt_array = generate_scoredict( tag, start, binderlen, confidences, scorefilename )
+
+    pdb_idxs = [int(line[22:26].strip()) for line in unrelaxed_pdb_lines.split("\n") if line[12:16].strip() == 'CA']
+
+    outlines = []
+    for line in unrelaxed_pdb_lines.split("\n"):
+        if line.startswith("ATOM"):
+          resi = int(line[22:26].strip())
+
+          idx = pdb_idxs.index(resi)
+          outlines.append(line[:60] + f'{plddt_array[idx]:.2f}'.rjust(5) + line[65:])
+
+    outfile = f'{tag}_af2pred.pdb'
+    with open(outfile, 'w') as f: f.write('\n'.join(outlines))
+    
+    
 def insert_truncations(residue_index, Ls):
     idx_res = residue_index
     for break_i in Ls:
@@ -376,7 +387,7 @@ def generate_feature_dict( pdbfile ):
 
   return feature_dict, initial_guess, len(seq_list[0]) 
 
-def input_check( pdbfile, tag ):
+def input_check( pdbfile ):
     with open(pdbfile,'r') as f: lines = f.readlines()
 
     seen_indices = set()
@@ -397,14 +408,14 @@ def input_check( pdbfile, tag ):
             # Only checking residue index at CA atom
             residx = line[22:27].strip()
             if residx in seen_indices:
-                sys.exit( f"\nNon-unique residue indices detected for tag: {tag}. " +
+                sys.exit( f"\nNon-unique residue indices detected for tag: {pdb}. " +
                 "This will cause AF2 to yield garbage outputs. Exiting." )
 
             seen_indices.add(residx)
 
         if ( not line[21:22].strip() == "A" ) and chain1:
             sys.exit( f"\nThe first chain in the pose must be the binder and it must be chain A. " +
-                    f"Tag: {tag} does not satisfy this requirement. Exiting." )
+                    f"Tag: {pdb} does not satisfy this requirement. Exiting." )
 
 def featurize(pdb):
   
@@ -423,6 +434,7 @@ def featurize(pdb):
 # Checkpointing Functions
 
 def record_checkpoint( pdb, checkpoint_filename ):
+  with open( checkpoint_filename, 'a' ) as f:
     f.write( pdb )
     f.write( '\n' )
 
@@ -447,15 +459,14 @@ scorefilename = "out.sc"
 
 finished_structs = determine_finished_structs( checkpoint_filename )
 
-with os.scandir(args.pdb_dir) as pdbs:
-    for pdb in pdbs: 
-        if pdb in finished_structs:
-            print( f"SKIPPING {pdb}, since it was already run" )
-            continue
-      
-        feature_dict, initial_guess, binderlen = featurize(pdb)
-        predict_structure(pdb, feature_dict, binderlen, initial_guess, scorefilename)
-        
-        record_checkpoint( pdb, checkpoint_filename )
+for pdb in glob.glob( os.path.join(args.pdb_dir, '*.pdb') ): 
+    if pdb in finished_structs:
+        print( f"SKIPPING {pdb}, since it was already run" )
+        continue
+  
+    feature_dict, initial_guess, binderlen = featurize(pdb)
+    predict_structure(pdb, feature_dict, binderlen, initial_guess, scorefilename)
+    
+    record_checkpoint( pdb, checkpoint_filename )
 
 print('done predicting')
