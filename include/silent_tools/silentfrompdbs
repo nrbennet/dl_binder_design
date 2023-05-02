@@ -48,9 +48,7 @@ command -v score_jd2 >/dev/null 2>&1 || {
 tmp_file=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)
 tmp_file="tmp_${tmp_file}.silent"
 
-#score_jd2 -l $tmp_list -out:file:silent $tmp_file -out:file:silent_struct_type binary -ignore_waters false -water_type_if_unspecified HOH -extra_res_fa /home/bcov/from/jason/H3i.am1bcc.fa.mm.params -extra_res_database_resname_list  /home/nrbennet/software/silent_tools/extra_residues.list 1>&2
-
-$jd2_program -l $tmp_list -out:file:silent $tmp_file -out:file:silent_struct_type binary -extra_res_fa /home/bcov/from/jason/H3i.am1bcc.fa.mm.params 1>&2
+$jd2_program -l $tmp_list -out:file:silent $tmp_file -out:file:silent_struct_type binary 1>&2
 
 silentls $tmp_file | sed 's/_0001$//g' | silentrename $tmp_file
 
