@@ -97,9 +97,10 @@ def sequence_optimize( pdbfile, chains, model, fixed_res ):
     masked_chains = [ chains[0] ]
     visible_chains = [ chains[1] ]
 
-    fixed_positions_dict = { my_rstrip(pdbfile,'.pdb'): fixed_res }
+    fixed_positions_dict = {}
+    fixed_positions_dict[my_rstrip(pdbfile,'.pdb')] = {"A":fixed_res,"B":[]}
 
-    sequences = mpnn_util.generate_sequences( model, device, feature_dict, arg_dict, masked_chains, visible_chains )
+    sequences = mpnn_util.generate_sequences( model, device, feature_dict, arg_dict, masked_chains, visible_chains, fixed_positions_dict )
     
     print( f"MPNN generated {len(sequences)} sequences in {int( time.time() - t0 )} seconds" ) 
 
