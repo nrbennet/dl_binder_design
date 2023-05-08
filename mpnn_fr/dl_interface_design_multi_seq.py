@@ -76,7 +76,7 @@ def thread_mpnn_seq( pose, binder_seq ):
     
     return pose
 
-def sequence_optimize( pdbfile, chains, model, fixed_res ):
+def sequence_optimize( pdbfile, chains, model, fixed_positions_dict ):
     
     t0 = time.time()
 
@@ -88,10 +88,7 @@ def sequence_optimize( pdbfile, chains, model, fixed_res ):
     masked_chains = [ chains[0] ]
     visible_chains = [ chains[1] ]
 
-    fixed_positions_dict = {}
-    fixed_positions_dict[my_rstrip(pdbfile,'.pdb')] = {"A":fixed_res,"B":[]}
-
-    sequences = mpnn_util.generate_sequences( model, device, feature_dict, arg_dict, masked_chains, visible_chains )
+    sequences = mpnn_util.generate_sequences( model, device, feature_dict, arg_dict, masked_chains, visible_chains, fixed_positions_dict=fixed_positions_dict )
     
     print( f"MPNN generated {len(sequences)} sequences in {int( time.time() - t0 )} seconds" ) 
 
@@ -146,7 +143,7 @@ def dl_design( pose, tag, og_struct, mpnn_model, sfd_out ):
     pose.dump_pdb( pdbfile )
     chains = get_chains( pose )
 
-    seqs_scores = sequence_optimize( pdbfile, chains, mpnn_model, fixed_res)
+    seqs_scores = sequence_optimize( pdbfile, chains, mpnn_model, fixed_positions_dict)
     os.remove( pdbfile )
 
     for idx, (seq, score) in enumerate(seqs_scores):
