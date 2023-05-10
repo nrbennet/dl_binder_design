@@ -27,7 +27,7 @@ parser.add_argument( "-relax_cycles", type=int, default="1", help="The number of
 parser.add_argument( "-output_intermediates", action="store_true", help='Whether to write all intermediate sequences from the relax cycles to disc (defaut False)' )
 parser.add_argument( "-temperature", type=float, default=0.000001, help='The temperature to use for ProteinMPNN sampling (default 0)' )
 parser.add_argument( "-augment_eps", type=float, default=0, help='The variance of random noise to add to the atomic coordinates (default 0)' )
-parser.add_argument( "-omit_AAs", type=str, default='X', help='A string off all residue types (one letter case-insensitive) that you would not like to use for design. Letters not corresponding to residue types will be ignored' )
+parser.add_argument( "-omit_AAs", type=str, default='CX', help='A string off all residue types (one letter case-insensitive) that you would not like to use for design. Letters not corresponding to residue types will be ignored' )
 parser.add_argument( "-num_connections", type=int, default=48, help='Number of neighbors each residue is connected to (default 48)' )
 parser.add_argument( "-fix_FIXED_res", action="store_true", help='Whether to fix the sequence of residues labelled as FIXED or not (default False)' )
 
