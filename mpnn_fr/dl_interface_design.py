@@ -184,7 +184,7 @@ def dl_design( pose, tag, og_struct, mpnn_model, sfd_out ):
     seq, mpnn_score = seqs_scores[0] # We know there is only one entry
     pose = thread_mpnn_seq( pose, seq )
 
-    tag = f"{prefix}_0_cycle{cycle}"
+    tag = f"{prefix}_0_cycle{args.relax_cycles}"
 
     add2silent( pose, tag, sfd_out )
 
