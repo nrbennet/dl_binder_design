@@ -49,10 +49,16 @@ tar --extract --verbose --file=alphafold_params_2022-12-06.tar
 Running the interface prediction script is simple:
 
 ```
-<base_dir>/af2_initial_guess/interfaceAF2predict.py -silent my_designs.silent
+<base_dir>/af2_initial_guess/predict.py -silent my_designs.silent
 ```
 
 This will create a file titled `out.silent` containing the AF2 predictions of your designs. It will also output a file titled `out.sc` with the scores of the designs, `pae_interaction` is the score that showed the most predictivity in the experiments performed in the paper.
+
+With the refactor, this script is now able to read and write PDB and silent files as well as perform both monomer and complex predictions. The arguments for these can be listed by running:
+
+```
+<base_dir>/af2_initial_guess/predict.py -h
+```
 
 NOTE: This script expects your binder design to be the first chain it receives. The binder will be predicted from single sequence and with an intial guess. The target chains will be fixed to the input structure. The script also expects your residue indices to be unique, ie. your binder and target cannot both start with residue 1.
 
@@ -61,10 +67,16 @@ NOTE: This script expects your binder design to be the first chain it receives. 
 Running design with ProteinMPNN-FastRelax cycling is also simple:
 
 ```
-<base_dir>/mpnn_fr/dl_interface_design.py -silent my_designs.silent -output_intermediates -checkpoint_path <base_dir>/mpnn_fr/ProteinMPNN/vanilla_model_weights/v_48_020.pt
+<base_dir>/mpnn_fr/dl_interface_design.py -silent my_designs.silent
 ```
 
 This will create a file titled `out.silent` containing your designs. This file can be fed directly to AF2 interface prediction.
+
+With the refactor, this script is now able to read and write both PDB files and silent files. I have also added more informative argument messages which can be accessed by running:
+
+```
+<base_dir>/mpnn_fr/dl_interface_design.py -h
+```
 
 NOTE: This script expects your binder design to be the first chain it receives. This script is robust to non-unique indices, unlike the AF2 interface script.
 
@@ -76,5 +88,5 @@ If you used RFdiffusion to generate your binder designs and would like to fix a 
 python <base_dir>/helper_scripts/addFIXEDlabels.py --pdbdir /dir/of/pdbs --trbdir /dir/of/trbs --verbose
 ```
 
-These pdb files can be collected into a silent file as before and run through the ProteinMPNN script using the `-fix_FIXED_res` flag.
+These pdb files can be collected into a silent file (or just used as PDB files) and run through the ProteinMPNN script which will detect the FIXED labels and keep those sequence positions fixed.
 
