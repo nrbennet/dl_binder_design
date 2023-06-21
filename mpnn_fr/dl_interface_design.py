@@ -91,7 +91,11 @@ class sample_features():
 
         endA = self.pose.split_by_chain()[1].total_residue()
         for resi in range1( endA ):
-            if str(self.pose.pdb_info().get_reslabels( resi )).strip() == 'FIXED':
+            reslabels = self.pose.pdb_info().get_reslabels( resi )
+
+            if len(reslabels) == 0: continue
+
+            if str(self.pose.pdb_info().get_reslabels( resi )[1]).strip() == 'FIXED':
                 fixed_list.append( resi )
 
         # Get ordered unique chainIDs for the pose
@@ -127,10 +131,10 @@ class ProteinMPNN_runner():
         self.struct_manager = struct_manager
 
         if torch.cuda.is_available():
-            print('Found GPU will run MPNN on GPU')
+            print('Found GPU will run ProteinMPNN on GPU')
             self.device = "cuda:0"
         else:
-            print('No GPU found, running MPNN on CPU')
+            print('No GPU found, running ProteinMPNN on CPU')
             self.device = "cpu"
 
         self.mpnn_model = mpnn_util.init_seq_optimize_model(
@@ -143,6 +147,8 @@ class ProteinMPNN_runner():
         )
 
         alphabet = 'ACDEFGHIKLMNPQRSTVWYX'
+
+        self.debug = args.debug
 
         self.temperature = args.temperature
         self.seqs_per_struct = args.seqs_per_struct
@@ -204,6 +210,9 @@ class ProteinMPNN_runner():
 
         fixed_positions_dict = {pdbfile[:-len('.pdb')]: sample_feats.fixed_res}
 
+        if self.debug:
+            print(f'Fixed positions dict: {fixed_positions_dict}')
+
         sequences = mpnn_util.generate_sequences(
             self.mpnn_model,
             self.device,
@@ -215,16 +224,16 @@ class ProteinMPNN_runner():
             fixed_positions_dict=fixed_positions_dict
         )
         
-        if args.debug:
+        if self.debug:
             print(f'Generated sequence(s): {sequences}') 
 
-        print( f"MPNN generated {len(sequences)} sequences in {int( time.time() - mpnn_t0 )} seconds" ) 
+        print( f"ProteinMPNN generated {len(sequences)} sequences in {int( time.time() - mpnn_t0 )} seconds" ) 
 
         return sequences
 
     def proteinmpnn(self, sample_feats):
         '''
-        Run MPNN sequence optimization on the pose, this does not use FastRelax
+        Run ProteinMPNN sequence optimization on the pose, this does not use FastRelax
         '''
         seqs_scores = self.sequence_optimize(sample_feats)
 
