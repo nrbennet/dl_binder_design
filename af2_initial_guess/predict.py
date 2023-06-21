@@ -42,12 +42,12 @@ parser = argparse.ArgumentParser()
 
 # I/O Arguments
 parser.add_argument( "-pdbdir", type=str, default="", help='The name of a directory of pdbs to run through the model' )
-parser.add_argument( "-silent", type=str, default="", help='The name of a silent file to run this metric on. pdbs are not accepted at this point in time' )
-parser.add_argument( "-outpdbdir", type=str, default="outputs", help='The directory to which the output PDB files will be written' )
-parser.add_argument( "-outsilent", type=str, default="out.silent", help='The name of the silent file to which output structs will be written' )
-parser.add_argument( "-runlist", type=str, default='', help="The path of a list of pdb tags to run (default: ''; Run all PDBs" )
+parser.add_argument( "-silent", type=str, default="", help='The name of a silent file to run through the model' )
+parser.add_argument( "-outpdbdir", type=str, default="outputs", help='The directory to which the output PDB files will be written. Only used when -pdbdir is active' )
+parser.add_argument( "-outsilent", type=str, default="out.silent", help='The name of the silent file to which output structs will be written. Only used when -silent is active' )
+parser.add_argument( "-runlist", type=str, default='', help="The path of a list of pdb tags to run. Only used when -pdbdir is active (default: ''; Run all PDBs)" )
 parser.add_argument( "-checkpoint_name", type=str, default='check.point', help="The name of a file where tags which have finished will be written (default: check.point)" )
-parser.add_argument( "-scorefilename", type=str, default='out.csv', help="The name of a file where scores will be written (default: out.sc)" )
+parser.add_argument( "-scorefilename", type=str, default='out.sc', help="The name of a file where scores will be written (default: out.sc)" )
 parser.add_argument( "-maintain_res_numbering", action="store_true", default=False, help='When active, the model will not renumber the residues when bad inputs are encountered (default: False)' )
 
 parser.add_argument( "-debug", action="store_true", default=False, help='When active, errors will cause the script to crash and the error message to be printed out (default: False)')
