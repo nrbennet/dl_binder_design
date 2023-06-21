@@ -1,6 +1,6 @@
 # dl_binder_design
 
-This repo contains the scripts described in the paper [Improving de novo Protein Binder Design with Deep Learning](https://www.biorxiv.org/content/10.1101/2022.06.15.495993v1).
+This repo contains the scripts described in the paper [Improving de novo Protein Binder Design with Deep Learning](https://www.nature.com/articles/s41467-023-38328-5).
 
 ## Setup:
 
