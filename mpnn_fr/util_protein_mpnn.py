@@ -230,7 +230,6 @@ def init_seq_optimize_model(device, hidden_dim, num_layers, backbone_noise, num_
 
    return model
 
-#def set_default_args( seq_per_target, omit_AAs=['X'], decoding_order='forward' ):
 def set_default_args( seq_per_target, omit_AAs=['X'] ):
 
     #global DECODING_ORDER
@@ -243,20 +242,21 @@ def set_default_args( seq_per_target, omit_AAs=['X'] ):
     retval['NUM_BATCHES'] = seq_per_target // retval['BATCH_COPIES']
     retval['temperature'] = 0.1
 
-    omit_AAs_list = omit_AAs
     alphabet = 'ACDEFGHIKLMNPQRSTVWYX'
-    retval['omit_AAs_np'] = np.array([AA in omit_AAs_list for AA in alphabet]).astype(np.float32)
+    retval['omit_AAs_np'] = np.array([AA in omit_AAs for AA in alphabet]).astype(np.float32)
 
+    # Per-residue omit AA option
     retval['omit_AA_dict'] = None
+
     retval['pssm_dict'] = None
-    retval['bias_AA_dict'] = None
     retval['tied_positions_dict'] = None
+
+    # Per-residue bias option
     retval['bias_by_res_dict'] = None
-    retval['bias_AAs_np'] = np.zeros(len(alphabet))
 
     return retval
 
-def generate_sequences( model, device, feature_dict, arg_dict, masked_chains, visible_chains, fixed_positions_dict=None ):
+def generate_sequences( model, device, feature_dict, arg_dict, masked_chains, visible_chains, bias_AAs_np, fixed_positions_dict=None ):
     seqs_scores = []
 
     with torch.no_grad():
@@ -297,7 +297,7 @@ def generate_sequences( model, device, feature_dict, arg_dict, masked_chains, vi
                     mask=mask,
                     temperature=arg_dict['temperature'],
                     omit_AAs_np=arg_dict['omit_AAs_np'],
-                    bias_AAs_np=arg_dict['bias_AAs_np'],
+                    bias_AAs_np=bias_AAs_np,
                     chain_M_pos=chain_M_pos,
                     omit_AA_mask=omit_AA_mask,
                     pssm_coef=pssm_coef,
