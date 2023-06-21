@@ -43,9 +43,12 @@ NOTE: Some silent tools require PyRosetta and will fail if run in a Python envir
 ## Ensure Access to AlphaFold2 model weights
 The scripts in this repository expect AF2 weights to be in <base_dir>/model_weights/params and will fail to run if the weights are not there. If you already have AF2 params_model_1_ptm.npz weights downloaded then you may simply copy them to <base_dir>/model_weights/params or create a symlink. If you do not have these weights downloaded you will have to download them from DeepMind's repository, this can be done as follows:
 
-cd <base_dir>/af2_initial_guess/model_weights/params
+```
+cd <base_dir>/af2_initial_guess
+mkdir -p model_weights/params && cd model_weights/params
 wget https://storage.googleapis.com/alphafold/alphafold_params_2022-12-06.tar
 tar --extract --verbose --file=alphafold_params_2022-12-06.tar 
+```
 
 ## AlphaFold2 Complex Prediction
 
