@@ -2,6 +2,9 @@
 
 This repo contains the scripts described in the paper [Improving de novo Protein Binder Design with Deep Learning](https://www.nature.com/articles/s41467-023-38328-5).
 
+![forgithub](https://github.com/nrbennet/dl_binder_design/assets/56419265/4c5d6a05-d2fb-4c7b-b1e0-0c743b2114eb)
+
+
 ## Setup:
 
 ## Conda Environment
