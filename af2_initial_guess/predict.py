@@ -56,6 +56,7 @@ parser.add_argument( "-debug", action="store_true", default=False, help='When ac
 parser.add_argument( "-max_amide_dist", type=float, default=3.0, help='The maximum distance between an amide bond\'s carbon and nitrogen (default: 3.0)' )
 parser.add_argument( "-recycle", type=int, default=3, help='The number of AF2 recycles to perform (default: 3)' )
 parser.add_argument( "-no_initial_guess", action="store_true", default=False, help='When active, the model will not use an initial guess (default: False)' )
+parser.add_argument( "-force_monomer", action="store_true", default=False, help='When active, the model will predict the structure of a monomer (default: False)' )
 
 args = parser.parse_args()
 
@@ -306,6 +307,8 @@ class StructManager():
         # Generate a random unique temporary filename
         self.tmp_fn = f'tmp_{uuid.uuid4()}.pdb'
 
+        self.force_monomer = args.force_monomer
+
         self.silent = False
         if not args.silent == '':
             self.silent = True
@@ -487,7 +490,7 @@ class StructManager():
             else:
                 raise Exception( f"Pose {tag} failed input checking.")
 
-        # Check that this pose has two chains
+        # Determine whether we are working with a monomer or a complex
         splits = pose.split_by_chain()
         if len(splits) > 2:
             raise Exception( f"Pose {tag} has more than two chains. This is not supported by this script." )
@@ -500,8 +503,18 @@ class StructManager():
             binderlen = -1
 
         elif len(splits) == 2:
-            monomer   = False
-            binderlen = splits[1].size()
+            if self.force_monomer:
+                print( "/" * 60 ) 
+                print( f"Pose {tag} has two chains. But force_monomer is set to True. Treating as monomer.")
+                print( f"I am going to assume that the first chain is the binder and that is the chain I will predict")
+                print( "/" * 60 ) 
+
+                monomer   = True
+                pose      = splits[1]
+                binderlen = -1
+            else: 
+                monomer   = False
+                binderlen = splits[1].size()
 
         return pose, monomer, binderlen, usetag
 
@@ -516,12 +529,14 @@ if device == 'gpu':
     print('Found GPU and will use it to run AF2')
     print('/' * 60)
     print('/' * 60)
+    print('\n')
 else:
     print('/' * 60)
     print('/' * 60)
     print('WARNING! No GPU detected running AF2 on CPU')
     print('/' * 60)
     print('/' * 60)
+    print('\n')
 
 struct_manager = StructManager(args)
 af2_runner     = AF2_runner(args, struct_manager)
