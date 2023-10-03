@@ -29,12 +29,16 @@ for pdb in pdb_list:
         continue
 
     data = np.load(trb_path, allow_pickle=True)
+    
+    if 'receptor_con_hal_pdb_idx' in data:
+        #Identify the last residue number in A chain
+        last_res_id = int(data['receptor_con_hal_pdb_idx'][0][1]) - 1
 
-    #Identify the last residue number in A chain
-    last_res_id = int(data['receptor_con_hal_pdb_idx'][0][1]) - 1
-
-    #Identify where inpaint seq is True, ie, kept fixed
-    indices = np.where(data['inpaint_seq'][:last_res_id])[0]
+        #Identify where inpaint seq is True, ie, kept fixed
+        indices = np.where(data['inpaint_seq'][:last_res_id])[0]
+    else:
+        #Identify where inpaint seq is True in the only chain
+        indices = np.where(data['inpaint_seq'])[0]
 
     if args.verbose:
         print(f"Adding FIXED labels to {pdb} at positions {indices}")
