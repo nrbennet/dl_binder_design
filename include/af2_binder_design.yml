@@ -1,4 +1,4 @@
-name: test_af2_binder_design
+name: af2_binder_design
 channels:
   - pytorch
   - nvidia
