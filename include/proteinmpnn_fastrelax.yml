@@ -1,4 +1,4 @@
-name: ntoher2testproteinmpnn_binder_design
+name: proteinmpnn_binder_design
 channels:
   - pytorch
   - nvidia
