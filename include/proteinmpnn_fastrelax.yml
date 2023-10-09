@@ -1,0 +1,12 @@
+name: ntoher2testproteinmpnn_binder_design
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pytorch=2.0
+  - biopython
+  - ml-collections
+  - pyrosetta

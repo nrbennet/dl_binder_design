@@ -1,22 +1,20 @@
-name: dl_binder_design
+name: test_af2_binder_design
 channels:
   - pytorch
   - nvidia
   - conda-forge
   - defaults
 dependencies:
-  - cudatoolkit=11.1
-  - python=3.9
-  - pytorch=1.9
-  - pyrosetta
+  - python=3.11
   - biopython
   - ml-collections
   - tensorflow
   - pip
-
+  - pyrosetta
+  - mock
   - pip:
     - --find-links https://storage.googleapis.com/jax-releases/jax_cuda_releases.html 
-    - jax==0.2.19
-    - jaxlib==0.1.70+cuda111
-    - dm-haiku==0.0.5
-    - dm-tree==0.1.6
+    - jax[cuda12_pip]
+    - jaxlib
+    - dm-haiku
+    - dm-tree
