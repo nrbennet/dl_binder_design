@@ -1,22 +1,17 @@
 #!/usr/bin/env python
 
 import os, sys
-import math
 
 from pyrosetta import *
 from pyrosetta.rosetta import *
 
 import numpy as np
-from collections import defaultdict
 from collections import OrderedDict
 import time
 import argparse
-import itertools
 import subprocess
 import time
-import pandas as pd
 import glob
-from decimal import Decimal
 
 import torch
 import json
