@@ -120,6 +120,7 @@ With the refactor, this script is now able to read and write both PDB files and 
 ```
 
 NOTE: This script expects your binder design to be the first chain it receives. This script is robust to non-unique indices, unlike the AF2 interface script.
+NOTE 2: The outputs of this script do not have relaxed sidechains (since sidechains are not input to AF2 and it's not worth the computation to relax them) so the structures will look strange if you visualize them in PyMol, this is perfectly normal, the structures will look better after run though AF2.
 
 ### Running ProteinMPNN with Fixed Residues <a name="inf2"></a>
 
