@@ -19,6 +19,8 @@ This repo contains the scripts described in the paper [Improving de novo Protein
   * [ProteinMPNN-FastRelax Binder Design](#inf1)
     * [Running ProteinMPNN with Fixed Residues](#inf2)
   * [AlphaFold2 Complex Prediction](#inf3)
+* [Troubleshooting](#trb0)
+
 
 ## Third Party Source Code <a name="sourcecode"></a>
 This repository provides a copy of Brian Coventry's silent tools, these tools are also provided [here](https://github.com/bcov77/silent_tools). This repository provides a wrapper to [Justas' ProteinMPNN code](https://github.com/dauparas/ProteinMPNN) and some of the code in the wrapper class is adapted directly from ProteinMPNN code. Finally, this repository provides a version of the AlphaFold2 source code with the "initial guess" modifications described in [this paper](https://www.nature.com/articles/s41467-023-38328-5). The AF2 source code is provided with the original DeepMind license at the top of each file.
