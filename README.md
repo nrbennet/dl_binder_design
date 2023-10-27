@@ -153,5 +153,17 @@ With the refactor, this script is now able to read and write PDB and silent file
 
 NOTE: This script expects your binder design to be the first chain it receives. The binder will be predicted from single sequence and with an intial guess. The target chains will be fixed to the input structure. The script also expects your residue indices to be unique, ie. your binder and target cannot both start with residue 1.
 
+# Troubleshooting <a name="trb0"></a>
+
+One of the most common errors that people have been having is one that looks like this:
+
+```
+Struct with tag SAMETAG failed in 0 seconds with error: <class 'EXCEPTION'>
+```
+
+Where SAMETAG and EXCEPTION can be many different things. What is happening here is that the main loops of both of the scripts provided here are wrapped in a try-catch block; the script tries to run each design and if an error occurs, the script notes which design had an error and continues to the next design. This error catching is convenient when running production-scale design campaigns but is a nuisance for debugging since the messages are not very informative.
+
+If you hit this error, I recommend running the same command that yielded the error but while adding the `-debug` flag to the command. This flag will make the script run without the try-catch block and errors will print with the standard verbose, easier-to-debug messages.
+
 
 
