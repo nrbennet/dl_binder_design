@@ -8,6 +8,7 @@ dependencies:
   - python=3.11
   - biopython
   - ml-collections
+  - ml_dtypes
   - tensorflow
   - pip
   - pyrosetta
