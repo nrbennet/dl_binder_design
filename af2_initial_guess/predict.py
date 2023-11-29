@@ -165,7 +165,7 @@ class AF2_runner():
 
         return feature_dict, initial_guess 
 
-    def generate_scoredict(self, feat_holder, confidences) -> None:
+    def generate_scoredict(self, feat_holder, confidences, rmsds) -> None:
         '''
         Collect the confidence values, slicing them to the binder and target regions
         then add the parsed scores to the score_dict
@@ -205,6 +205,8 @@ class AF2_runner():
                 "pae_binder" : pae_binder,
                 "pae_target" : pae_target,
                 "pae_interaction" : pae_interaction_total,
+                "binder_aligned_rmsd": rmsds['binder_aligned_rmsd'],
+                "target_aligned_rmsd": rmsds['target_aligned_rmsd'],
                 "time" : time
         }
 
@@ -245,6 +247,16 @@ class AF2_runner():
         
         feat_holder.plddt_array = confidences['plddt']
 
+        # Calculate the RMSDs
+        target_mask = np.zeros(len(feat_holder.seq), dtype=bool)
+        target_mask[feat_holder.binderlen:] = True
+
+        rmsds = af2_util.calculate_rmsds(
+            feat_holder.initial_all_atom_positions,
+            this_protein.atom_positions,
+            target_mask
+        )
+
         # Write the structure as a pdb file so Rosetta can read it
         unrelaxed_pdb_lines = protein.to_pdb(this_protein)
         
@@ -256,7 +268,7 @@ class AF2_runner():
         os.remove(self.struct_manager.tmp_fn)
         
         # Now we can finally write the scores and the predicted structure to disk
-        self.generate_scoredict(feat_holder, confidences)
+        self.generate_scoredict(feat_holder, confidences, rmsds)
         self.struct_manager.dump_pose(feat_holder)
     
     def process_struct(self, tag) -> None:

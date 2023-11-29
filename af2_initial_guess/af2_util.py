@@ -303,3 +303,110 @@ def check_residue_distances(all_positions, all_positions_mask, max_amide_distanc
         prev_is_unmasked = this_is_unmasked
 
     return breaks
+
+def subset_rmsd(
+        xyz1: np.ndarray,
+        align1: np.ndarray,
+        calc1: np.ndarray,
+        xyz2: np.ndarray,
+        align2: np.ndarray,
+        calc2: np.ndarray,
+        eps=1e-6
+    ) -> float:
+    '''
+        A general function to calculate the RMSD of a subset of atoms. This takes two sets of coordinates
+        and aligns them on the subset of atoms defined by align1 and align2. It then calculates the RMSD
+        of the subset of atoms defined by calc1 and calc2.
+
+        Args:
+            xyz1   : The first set of coordinates [L, 3]
+            align1 : The indices of the atoms to align on in xyz1 [N]
+            calc1  : The indices of the atoms to calculate the RMSD on in xyz1 [M]
+            xyz2   : The second set of coordinates [L', 3]
+            align2 : The indices of the atoms to align on in xyz2 [N]
+            calc2  : The indices of the atoms to calculate the RMSD on in xyz2 [M]
+            eps    : A small number to avoid dividing by zero
+
+        Returns:
+            rmsd   : The RMSD of the subset of atoms defined by calc1 and calc2
+
+    '''
+
+    assert(xyz1[align1].shape == xyz2[align2].shape), "The atoms to align on must be the same shape"
+    assert(xyz1[calc1].shape == xyz2[calc2].shape), "The atoms to calculate the RMSD on must be the same shape"
+
+    # center to CA centroid of the atoms to align on
+    xyz1 = xyz1 - xyz1[align1].mean(0)
+    xyz2 = xyz2 - xyz2[align2].mean(0)
+
+    # Computation of the covariance matrix
+    C = xyz2[align2].T @ xyz1[align1]
+
+    # Compute optimal rotation matrix using SVD
+    V, S, W = np.linalg.svd(C)
+
+    # get sign to ensure right-handedness
+    d = np.ones([3,3])
+    d[:,-1] = np.sign(np.linalg.det(V)*np.linalg.det(W))
+
+    # Rotation matrix U
+    U = (d*V) @ W
+
+    # Rotate all of xyz2
+    xyz2_ = xyz2 @ U
+
+    assert(xyz2_[calc2].shape[1] == 3), "The last dimension of the prediction must be the 3 Cartesian coordinates"
+
+    divL = xyz2_[calc2].shape[0]
+    rmsd = np.sqrt(np.sum((xyz2_[calc2]-xyz1[calc1])*(xyz2_[calc2]-xyz1[calc1]), axis=(0,1)) / (divL + eps))
+
+    return rmsd
+
+def calculate_rmsds(
+            init_crds : np.ndarray,
+            pred_crds : np.ndarray,
+            tmask     : np.ndarray
+        ) -> dict:
+    '''
+        Given the initial coordinates and the predicted coordinates, calculate the Ca RMSD of the binders aligned
+        on one another (binder_aligned_rmsd) and the Ca RMSD of the predicted binder aligned on the target (target_aligned_rmsd).
+
+        Args:
+
+            init_crds : The initial coordinates of the complex [L, 27, 3]
+
+            pred_crds : The predicted coordinates of the complex [L, 27, 3]
+
+            tmask     : A mask indicating which residues are part of the target chain [L]
+
+        Returns:
+
+            rmsds     : A dictionary containing the RMSDs of the binder aligned on the binder and the binder aligned on the target
+    
+    '''
+
+    rmsds = {}
+
+    init_ca = init_crds[:, 1, :]
+    pred_ca = pred_crds[:, 1, :]
+
+    rmsds['binder_aligned_rmsd'] = subset_rmsd(
+        xyz1   = init_ca,
+        align1 = ~tmask,
+        calc1  = ~tmask,
+        xyz2   = pred_ca,
+        align2 = ~tmask,
+        calc2  = ~tmask
+    )
+
+    rmsds['target_aligned_rmsd'] = subset_rmsd(
+        xyz1   = init_ca,
+        align1 = tmask,
+        calc1  = ~tmask,
+        xyz2   = pred_ca,
+        align2 = tmask,
+        calc2  = ~tmask
+    )
+
+    return rmsds
+
