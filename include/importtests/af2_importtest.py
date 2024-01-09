@@ -51,10 +51,30 @@ from alphafold.data.tools import hhsearch
 sys.path.append(f'{scriptdir}/../..')
 from include.silent_tools import silent_tools
 
+# PyRosetta install test
+print("/"*200)
+print("Testing PyRosetta install. If this script errors before you see a PyRosetta success message then you " + \
+      "have an issue with your PyRosetta install")
+print("/"*200)
+
+from pyrosetta import *
+from rosetta import *
+init()
+
+print("/"*70)
+print("PyRosetta installation was successful!")
+print("/"*70)
+
+print("\n")
+
 from jax.lib import xla_bridge
 device = xla_bridge.get_backend().platform
 
 if device == 'gpu':
+    print('/'*70)
     print('Found a GPU! This environment passes all import tests')
+    print('/'*70)
 else:
+    print('/'*70)
     print('No GPU found! This environment passes all import tests, but will not be able to use a GPU!!')
+    print('/'*70)
