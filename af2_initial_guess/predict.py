@@ -26,7 +26,7 @@ import af2_util
 
 parent = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(parent, 'include'))
-from silent_tools import silent_tools
+import silent_tools
 
 from pyrosetta import *
 from rosetta import *
