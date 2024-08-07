@@ -6,7 +6,7 @@ channels:
   - defaults
 dependencies:
   - python=3.11
-  - biopython
+  - biopython==1.81
   - ml-collections
   - ml_dtypes
   - tensorflow
