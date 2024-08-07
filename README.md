@@ -44,6 +44,7 @@ channels:
 - conda-forge
 - defaults
 ```
+For non-comercial licence, you can use just "https://conda.graylab.jhu.edu"
 - More information about conda installing PyRosetta may be found here: https://www.pyrosetta.org/downloads
 - Clone this repo
 
