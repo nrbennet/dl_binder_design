@@ -57,6 +57,7 @@ parser.add_argument( "-max_amide_dist", type=float, default=3.0, help='The maxim
 parser.add_argument( "-recycle", type=int, default=3, help='The number of AF2 recycles to perform (default: 3)' )
 parser.add_argument( "-no_initial_guess", action="store_true", default=False, help='When active, the model will not use an initial guess (default: False)' )
 parser.add_argument( "-force_monomer", action="store_true", default=False, help='When active, the model will predict the structure of a monomer (default: False)' )
+parser.add_argument( "-preserve_interface", action="store_true", default=False, help='When active, template binder interface residues to preserve binding orientation (default: False)' )
 
 args = parser.parse_args()
 
@@ -89,9 +90,9 @@ class AF2_runner():
     '''
 
     def __init__(self, args, struct_manager):
-
         self.max_amide_dist = args.max_amide_dist
-
+        self.preserve_interface = args.preserve_interface
+        
         # For timing
         self.t0 = None
 
@@ -116,6 +117,46 @@ class AF2_runner():
         model_params = data.get_model_haiku_params(model_name=self.model_name, data_dir=params_dir)
 
         self.model_runner = model.RunModel(model_config, model_params)
+    
+
+    def identify_interface_residues(self, atom_positions, atom_masks, binderlen, cutoff=8.0):
+        """
+        Identify interface residues between binder and target based on CA distance.
+        
+        Args:
+            atom_positions: Array of atomic coordinates for all residues
+            atom_masks: Boolean mask indicating which atoms are present
+            binderlen: Number of residues in the binder (first chain)
+            cutoff: Distance cutoff in Angstroms for interface definition
+            
+        Returns:
+            List of binder residue indices within cutoff distance of target
+        """
+        interface_residues = []
+        ca_idx = residue_constants.atom_order['CA']
+        
+        # Early return if no target residues
+        if binderlen >= len(atom_positions):
+            return interface_residues
+        
+        for i in range(binderlen):
+            if not atom_masks[i][ca_idx]:
+                continue
+                
+            binder_ca = atom_positions[i][ca_idx]
+            
+            for j in range(binderlen, len(atom_positions)):
+                if not atom_masks[j][ca_idx]:
+                    continue
+                    
+                target_ca = atom_positions[j][ca_idx]
+                distance = np.linalg.norm(binder_ca - target_ca)
+                
+                if distance <= cutoff:
+                    interface_residues.append(i)
+                    break
+        
+        return interface_residues
 
     def featurize(self, feat_holder) -> None:
 
@@ -128,11 +169,23 @@ class AF2_runner():
 
         # Determine which residues to template
         if feat_holder.monomer:
-            # For monomers predict all residues
-            feat_holder.residue_mask = [False for i in range(len(feat_holder.seq))]
+            feat_holder.residue_mask = [False] * len(feat_holder.seq)
         else:
-            # For interfaces fix the target and predict the binder
-            feat_holder.residue_mask = [int(i) > feat_holder.binderlen for i in range(len(feat_holder.seq))]
+            # Template target residues
+            feat_holder.residue_mask = [i >= feat_holder.binderlen for i in range(len(feat_holder.seq))]
+            
+            # Optionally template binder interface residues for improved binding region preservation
+            # This is specially useful for cases where the binder is supposed to target a region rich in loops
+            # and the binder is not a globular protein
+            if self.preserve_interface:
+                binder_interface_residues = self.identify_interface_residues(
+                    feat_holder.initial_all_atom_positions, 
+                    feat_holder.initial_all_atom_masks,
+                    feat_holder.binderlen
+                )
+                
+                for res_idx in binder_interface_residues:
+                    feat_holder.residue_mask[res_idx] = True
 
         template_dict = af2_util.generate_template_features(
                                                             feat_holder.seq,
