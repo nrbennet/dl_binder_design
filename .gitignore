@@ -9,3 +9,6 @@ af2_initial_guess/__pycache__
 test/
 mpnn_fr/ProteinMPNN/
 mpnn_fr/__pycache__
+**/*.point
+.vscode
+tmp
