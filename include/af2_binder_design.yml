@@ -1,21 +1,35 @@
 name: af2_binder_design
 channels:
-  - pytorch
-  - nvidia
+  - https://conda.graylab.jhu.edu
   - conda-forge
+  - nvidia
+  - pytorch
   - defaults
+  - bioconda
+
 dependencies:
   - python=3.11
-  - biopython
+  - python_abi=3.11.*
+  - pyrosetta=*=py311*
+  - numpy=1.26.*
+  - scipy=1.11.*
+  - biopython=1.79
   - ml-collections
-  - ml_dtypes
-  - tensorflow
-  - pip
-  - pyrosetta
   - mock
+  - tensorflow=2.17.*
+  - pip
+
   - pip:
-    - --find-links https://storage.googleapis.com/jax-releases/jax_cuda_releases.html 
-    - jax[cuda12_pip]==0.4.20
-    - jaxlib
-    - dm-haiku
-    - dm-tree
+      - --find-links https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+      - jax[cuda12_pip]==0.4.29          
+      - dm-haiku==0.0.15
+      - dm-tree==0.1.9
+      - nvidia-cuda-runtime-cu12
+      - nvidia-cublas-cu12
+      - nvidia-cufft-cu12
+      - nvidia-cusolver-cu12
+      - nvidia-cusparse-cu12
+      - nvidia-nccl-cu12
+      - nvidia-cuda-cupti-cu12
+      - nvidia-nvjitlink-cu12
+      - nvidia-cudnn-cu12>=9.1           # matches cudnn91 jaxlib wheel
